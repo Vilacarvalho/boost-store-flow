@@ -166,7 +166,7 @@ const NewAttendance = () => {
       toast({
         title: saleResult === "won" ? "🎉 Venda registrada!" : "Atendimento salvo",
         description: saleResult === "won"
-          ? `R$ ${parseFloat(totalValue || "0").toLocaleString("pt-BR")} registrados com sucesso.`
+          ? `${formatBRL(parseFloat(totalValue || "0"))} registrados com sucesso.`
           : "Follow-up agendado automaticamente.",
       });
 

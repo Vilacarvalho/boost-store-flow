@@ -130,7 +130,7 @@ const Sales = () => {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-foreground">{seller.seller_name}</p>
                       </div>
-                      <p className="text-sm font-semibold text-foreground tabular-nums">R$ {seller.total_value.toLocaleString("pt-BR")}</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{formatBRL(seller.total_value)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Progress value={seller.conversion_rate} className="h-1.5 flex-1" />

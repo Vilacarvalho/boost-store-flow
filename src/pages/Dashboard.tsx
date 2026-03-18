@@ -305,7 +305,7 @@ const Dashboard = () => {
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-foreground tabular-nums">
-                      R$ {seller.total_value.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                      {formatBRL(seller.total_value)}
                     </p>
                   </div>
                 ))}
