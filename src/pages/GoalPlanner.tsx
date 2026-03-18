@@ -28,8 +28,7 @@ const periodOptions = [
   { value: "annual", label: "Anual" },
 ];
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const formatCurrency = (v: number) => formatBRL(v);
 
 const formatPercent = (v: number) => `${v.toFixed(1)}%`;
 
