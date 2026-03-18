@@ -131,6 +131,22 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/manual"
+              element={
+                <ProtectedRoute>
+                  <Manual />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/culture"
+              element={
+                <ProtectedRoute>
+                  <Culture />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
