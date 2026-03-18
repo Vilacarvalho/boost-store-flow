@@ -727,6 +727,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      user_can_access_content: {
+        Args: { _content_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "seller"
