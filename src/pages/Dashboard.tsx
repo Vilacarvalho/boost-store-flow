@@ -90,7 +90,7 @@ const Dashboard = () => {
       } else {
         setMetrics({
           total_sales: 0, won_sales: 0, total_value: 0,
-          avg_ticket: 0, conversion_rate: 0, total_attendances: 0,
+          avg_ticket: 0, conversion_rate: 0, total_attendances: 0, avg_pa: 0,
         });
       }
 
