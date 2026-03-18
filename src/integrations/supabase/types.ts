@@ -173,6 +173,41 @@ export type Database = {
           },
         ]
       }
+      culture: {
+        Row: {
+          id: string
+          mission: string
+          organization_id: string
+          updated_at: string
+          values: string
+          vision: string
+        }
+        Insert: {
+          id?: string
+          mission?: string
+          organization_id: string
+          updated_at?: string
+          values?: string
+          vision?: string
+        }
+        Update: {
+          id?: string
+          mission?: string
+          organization_id?: string
+          updated_at?: string
+          values?: string
+          vision?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "culture_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -457,6 +492,41 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_sections: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          organization_id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_sections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
