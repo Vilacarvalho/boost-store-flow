@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Users, ShoppingBag, User, Plus, Store, Target, Calculator, BarChart3, PieChart, BookOpen, FileText, Heart } from "lucide-react";
+import { Home, Users, ShoppingBag, User, Plus, Store, Target, Calculator, BarChart3, PieChart, BookOpen, FileText, Heart, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
