@@ -466,11 +466,10 @@ const GoalPlanner = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                className="w-28 text-right"
-                                value={r.appliedValue}
-                                onChange={(e) => updateAppliedValue(r.storeId, e.target.value)}
+                              <CurrencyInput
+                                className="w-32 text-right"
+                                value={formatCurrency(r.appliedValue).replace("R$\u00a0", "")}
+                                onValueChange={(v) => updateAppliedValue(r.storeId, String(parseBRL(v)))}
                               />
                             </TableCell>
                             <TableCell>
