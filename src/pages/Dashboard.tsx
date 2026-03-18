@@ -24,6 +24,7 @@ interface RankingEntry {
   won_count: number;
   total_count: number;
   conversion_rate: number;
+  avg_pa: number;
 }
 
 interface LostSale {
