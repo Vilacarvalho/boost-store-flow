@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Users, ShoppingBag, User, Plus, Store, Target, Calculator, BarChart3 } from "lucide-react";
+import { Home, Users, ShoppingBag, User, Plus, Store, Target, Calculator, BarChart3, PieChart } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ const adminNavItems = [
   { path: "/goals", icon: Target, label: "Metas", roles: ["admin", "manager"] },
   { path: "/goal-planner", icon: Calculator, label: "Planejador de Metas", roles: ["admin"] },
   { path: "/goal-performance", icon: BarChart3, label: "Performance de Metas", roles: ["admin", "manager", "seller"] },
+  { path: "/conversion-analysis", icon: PieChart, label: "Análise de Conversão", roles: ["admin", "manager", "seller"] },
 ];
 
 interface AppLayoutProps {
