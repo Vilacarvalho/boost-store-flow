@@ -103,6 +103,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/goal-performance"
+              element={
+                <ProtectedRoute>
+                  <GoalPerformance />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
