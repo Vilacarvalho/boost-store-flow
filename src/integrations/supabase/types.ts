@@ -40,6 +40,67 @@ export type Database = {
           },
         ]
       }
+      content_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_views: {
+        Row: {
+          content_id: string
+          id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          content_id: string
+          id?: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          content_id?: string
+          id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_views_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contents: {
         Row: {
           category: string
@@ -52,6 +113,8 @@ export type Database = {
           file_url: string | null
           id: string
           is_featured: boolean
+          is_pinned: boolean
+          is_required: boolean
           organization_id: string
           start_date: string
           store_id: string | null
@@ -68,6 +131,8 @@ export type Database = {
           file_url?: string | null
           id?: string
           is_featured?: boolean
+          is_pinned?: boolean
+          is_required?: boolean
           organization_id: string
           start_date?: string
           store_id?: string | null
@@ -84,6 +149,8 @@ export type Database = {
           file_url?: string | null
           id?: string
           is_featured?: boolean
+          is_pinned?: boolean
+          is_required?: boolean
           organization_id?: string
           start_date?: string
           store_id?: string | null
