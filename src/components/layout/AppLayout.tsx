@@ -1,14 +1,21 @@
 import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Users, ShoppingBag, User, Plus } from "lucide-react";
+import { Home, Users, ShoppingBag, User, Plus, Store, Target } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { path: "/dashboard", icon: Home, label: "Home" },
   { path: "/crm", icon: Users, label: "CRM" },
   { path: "/sales", icon: ShoppingBag, label: "Vendas" },
   { path: "/profile", icon: User, label: "Perfil" },
+];
+
+const adminNavItems = [
+  { path: "/stores", icon: Store, label: "Lojas", roles: ["admin"] },
+  { path: "/users", icon: Users, label: "Usuários", roles: ["admin"] },
+  { path: "/goals", icon: Target, label: "Metas", roles: ["admin", "manager"] },
 ];
 
 interface AppLayoutProps {
@@ -19,6 +26,9 @@ interface AppLayoutProps {
 const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { role } = useAuth();
+
+  const visibleAdminItems = adminNavItems.filter((item) => role && item.roles.includes(role));
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -101,6 +111,32 @@ const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
               </button>
             );
           })}
+
+          {/* Admin section */}
+          {visibleAdminItems.length > 0 && (
+            <>
+              <div className="pt-4 pb-1 px-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Admin</p>
+              </div>
+              {visibleAdminItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </nav>
       </aside>
     </div>

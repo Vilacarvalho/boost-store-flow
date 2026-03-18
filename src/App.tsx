@@ -12,6 +12,9 @@ import NewAttendance from "./pages/NewAttendance.tsx";
 import CRM from "./pages/CRM.tsx";
 import Sales from "./pages/Sales.tsx";
 import Profile from "./pages/Profile.tsx";
+import StoresManagement from "./pages/StoresManagement.tsx";
+import UsersManagement from "./pages/UsersManagement.tsx";
+import GoalsManagement from "./pages/GoalsManagement.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -63,6 +66,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/stores"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <StoresManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <UsersManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goals"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                  <GoalsManagement />
                 </ProtectedRoute>
               }
             />
