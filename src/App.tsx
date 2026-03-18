@@ -21,6 +21,7 @@ import ConversionAnalysis from "./pages/ConversionAnalysis.tsx";
 import ContentCenter from "./pages/ContentCenter.tsx";
 import Manual from "./pages/Manual.tsx";
 import Culture from "./pages/Culture.tsx";
+import Onboarding from "./pages/Onboarding.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
