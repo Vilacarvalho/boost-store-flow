@@ -202,7 +202,7 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">
                 Você está a{" "}
                 <span className="font-semibold text-primary tabular-nums">
-                  R$ {remaining.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                  {formatBRL(remaining)}
                 </span>{" "}
                 da sua meta do dia.
               </p>
