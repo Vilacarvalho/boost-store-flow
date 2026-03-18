@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { formatBRL } from "@/lib/currency";
 
 interface SaleItem {
   id: string;
@@ -108,7 +109,7 @@ const Sales = () => {
                       </p>
                     </div>
                     <span className={`text-sm font-semibold tabular-nums ${sale.status === "won" ? "text-success" : "text-muted-foreground"}`}>
-                      {sale.status === "won" ? `R$ ${sale.total_value.toLocaleString("pt-BR")}` : "Perdido"}
+                      {sale.status === "won" ? formatBRL(sale.total_value) : "Perdido"}
                     </span>
                   </motion.div>
                 ))}
@@ -129,7 +130,7 @@ const Sales = () => {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-foreground">{seller.seller_name}</p>
                       </div>
-                      <p className="text-sm font-semibold text-foreground tabular-nums">R$ {seller.total_value.toLocaleString("pt-BR")}</p>
+                      <p className="text-sm font-semibold text-foreground tabular-nums">{formatBRL(seller.total_value)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Progress value={seller.conversion_rate} className="h-1.5 flex-1" />

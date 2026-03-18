@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { formatBRL } from "@/lib/currency";
 
 interface Metrics {
   total_sales: number;
@@ -201,7 +202,7 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">
                 Você está a{" "}
                 <span className="font-semibold text-primary tabular-nums">
-                  R$ {remaining.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                  {formatBRL(remaining)}
                 </span>{" "}
                 da sua meta do dia.
               </p>
@@ -230,10 +231,10 @@ const Dashboard = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
-                R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                {formatBRL(totalValue)}
               </span>
               <span className="text-sm text-muted-foreground tabular-nums">
-                / R$ {goalTarget.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                / {formatBRL(goalTarget)}
               </span>
             </div>
             <Progress value={Math.min(goalProgress, 100)} className="h-2 rounded-full" />
@@ -260,7 +261,7 @@ const Dashboard = () => {
             />
             <MetricCard
               label="Ticket Médio"
-              value={`R$ ${(metrics?.avg_ticket || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+              value={formatBRL(metrics?.avg_ticket || 0)}
               icon={TrendingUp}
             />
             <MetricCard
@@ -304,7 +305,7 @@ const Dashboard = () => {
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-foreground tabular-nums">
-                      R$ {seller.total_value.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                      {formatBRL(seller.total_value)}
                     </p>
                   </div>
                 ))}

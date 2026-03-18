@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatBRL } from "@/lib/currency";
 
 const STEPS = ["Diagnóstico", "Apresentação", "Fechamento", "Objeções"];
 
@@ -166,7 +167,7 @@ const NewAttendance = () => {
       toast({
         title: saleResult === "won" ? "🎉 Venda registrada!" : "Atendimento salvo",
         description: saleResult === "won"
-          ? `R$ ${parseFloat(totalValue || "0").toLocaleString("pt-BR")} registrados com sucesso.`
+          ? `${formatBRL(parseFloat(totalValue || "0"))} registrados com sucesso.`
           : "Follow-up agendado automaticamente.",
       });
 
