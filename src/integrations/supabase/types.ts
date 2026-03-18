@@ -143,11 +143,13 @@ export type Database = {
           created_at: string
           created_by: string
           desired_growth_rate: number
+          distribution_mode: string | null
           id: string
           inflation_rate: number
           market_growth_rate: number
           organization_id: string
           period_type: string
+          planning_mode: string
           previous_revenue: number
           reference_period_end: string
           reference_period_start: string
@@ -155,6 +157,7 @@ export type Database = {
           suggested_goal_value: number
           target_period_end: string
           target_period_start: string
+          viability_status: string | null
         }
         Insert: {
           applied_goal_value?: number | null
@@ -163,11 +166,13 @@ export type Database = {
           created_at?: string
           created_by: string
           desired_growth_rate?: number
+          distribution_mode?: string | null
           id?: string
           inflation_rate?: number
           market_growth_rate?: number
           organization_id: string
           period_type?: string
+          planning_mode?: string
           previous_revenue?: number
           reference_period_end: string
           reference_period_start: string
@@ -175,6 +180,7 @@ export type Database = {
           suggested_goal_value?: number
           target_period_end: string
           target_period_start: string
+          viability_status?: string | null
         }
         Update: {
           applied_goal_value?: number | null
@@ -183,11 +189,13 @@ export type Database = {
           created_at?: string
           created_by?: string
           desired_growth_rate?: number
+          distribution_mode?: string | null
           id?: string
           inflation_rate?: number
           market_growth_rate?: number
           organization_id?: string
           period_type?: string
+          planning_mode?: string
           previous_revenue?: number
           reference_period_end?: string
           reference_period_start?: string
@@ -195,6 +203,7 @@ export type Database = {
           suggested_goal_value?: number
           target_period_end?: string
           target_period_start?: string
+          viability_status?: string | null
         }
         Relationships: [
           {
@@ -221,6 +230,7 @@ export type Database = {
           goal_plan_id: string | null
           id: string
           organization_id: string
+          parent_goal_id: string | null
           period_start: string
           period_type: Database["public"]["Enums"]["period_type"]
           source: string | null
@@ -236,6 +246,7 @@ export type Database = {
           goal_plan_id?: string | null
           id?: string
           organization_id: string
+          parent_goal_id?: string | null
           period_start?: string
           period_type?: Database["public"]["Enums"]["period_type"]
           source?: string | null
@@ -251,6 +262,7 @@ export type Database = {
           goal_plan_id?: string | null
           id?: string
           organization_id?: string
+          parent_goal_id?: string | null
           period_start?: string
           period_type?: Database["public"]["Enums"]["period_type"]
           source?: string | null
@@ -272,6 +284,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_parent_goal_id_fkey"
+            columns: ["parent_goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
             referencedColumns: ["id"]
           },
           {
