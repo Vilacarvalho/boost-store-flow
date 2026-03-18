@@ -380,12 +380,12 @@ const GoalPlanner = () => {
               {/* Financial inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Ponto de Equilíbrio (R$)</Label>
-                  <Input type="number" placeholder="Ex: 50000" value={breakEvenInput} onChange={(e) => setBreakEvenInput(e.target.value)} />
+                  <Label>Ponto de Equilíbrio</Label>
+                  <CurrencyInput value={breakEvenInput} onValueChange={setBreakEvenInput} placeholder="Ex: 100.000,00" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Faturamento Anterior (R$)</Label>
-                  <Input type="number" placeholder="Ex: 80000" value={previousRevenueInput} onChange={(e) => setPreviousRevenueInput(e.target.value)} />
+                  <Label>Faturamento Anterior</Label>
+                  <CurrencyInput value={previousRevenueInput} onValueChange={setPreviousRevenueInput} placeholder="Ex: 100.000,00" />
                 </div>
                 <div className="space-y-2">
                   <Label>Inflação (%)</Label>
