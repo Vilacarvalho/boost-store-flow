@@ -1,35 +1,68 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { LogOut, ChevronRight, User, Store, Target, Bell } from "lucide-react";
+import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
-
-const menuItems = [
-  { label: "Meus Dados", icon: User },
-  { label: "Minha Loja", icon: Store },
-  { label: "Minhas Metas", icon: Target },
-  { label: "Notificações", icon: Bell },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, signOut, user } = useAuth();
+  const [editNameOpen, setEditNameOpen] = useState(false);
+  const [editPassOpen, setEditPassOpen] = useState(false);
+  const [name, setName] = useState(profile?.name || "");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const roleLabels: Record<string, string> = {
-    admin: "Administrador",
-    manager: "Gerente",
-    seller: "Vendedor",
-  };
+  const roleLabels: Record<string, string> = { admin: "Administrador", manager: "Gerente", seller: "Vendedor" };
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
   };
 
+  const handleSaveName = async () => {
+    setSaving(true);
+    const { error } = await supabase.from("profiles").update({ name }).eq("id", user!.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Nome atualizado!");
+    setEditNameOpen(false);
+    window.location.reload();
+  };
+
+  const handleSavePassword = async () => {
+    setSaving(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Senha atualizada!");
+    setEditPassOpen(false);
+    setPassword("");
+  };
+
   const initials = profile?.name
     ? profile.name.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase()
     : "?";
+
+  const menuItems = [
+    { label: "Editar Nome", icon: User, onClick: () => { setName(profile?.name || ""); setEditNameOpen(true); } },
+    { label: "Alterar Senha", icon: KeyRound, onClick: () => { setPassword(""); setEditPassOpen(true); } },
+    { label: "Minhas Metas", icon: Target, onClick: () => navigate("/goals") },
+    { label: "Notificações", icon: Bell },
+  ];
+
+  const adminItems = [
+    { label: "Lojas", icon: Store, onClick: () => navigate("/stores") },
+    { label: "Usuários", icon: Users, onClick: () => navigate("/users") },
+    { label: "Metas da Rede", icon: Target, onClick: () => navigate("/goals") },
+  ];
 
   return (
     <AppLayout showFab={false}>
@@ -46,9 +79,11 @@ const Profile = () => {
             </div>
           </motion.div>
 
+          {/* Menu items */}
           <div className="space-y-1">
             {menuItems.map((item, i) => (
               <motion.button key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                onClick={item.onClick}
                 className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary transition-colors">
                 <item.icon className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground flex-1 text-left">{item.label}</span>
@@ -57,6 +92,26 @@ const Profile = () => {
             ))}
           </div>
 
+          {/* Admin section - visible on all devices for admin/manager */}
+          {(role === "admin" || role === "manager") && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Administração</p>
+              <div className="space-y-1">
+                {adminItems
+                  .filter((item) => role === "admin" || item.label === "Metas da Rede")
+                  .map((item, i) => (
+                    <motion.button key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                      onClick={item.onClick}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary transition-colors">
+                      <item.icon className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground flex-1 text-left">{item.label}</span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </motion.button>
+                  ))}
+              </div>
+            </div>
+          )}
+
           <Button variant="ghost" size="lg" onClick={handleSignOut}
             className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/5 rounded-xl">
             <LogOut className="h-5 w-5" />
@@ -64,6 +119,36 @@ const Profile = () => {
           </Button>
         </div>
       </div>
+
+      {/* Edit Name Dialog */}
+      <Dialog open={editNameOpen} onOpenChange={setEditNameOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Nome</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Nome</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditNameOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveName} disabled={!name || saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={editPassOpen} onOpenChange={setEditPassOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Alterar Senha</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Nova Senha</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPassOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSavePassword} disabled={password.length < 6 || saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
