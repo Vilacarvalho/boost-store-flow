@@ -303,7 +303,7 @@ const Dashboard = () => {
                         {seller.seller_name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {seller.conversion_rate}% conversão
+                        {seller.conversion_rate}% conv. · P.A. {Number(seller.avg_pa || 0).toFixed(1)}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-foreground tabular-nums">
