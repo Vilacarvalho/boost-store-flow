@@ -142,8 +142,8 @@ const GoalPlanner = () => {
   };
 
   const calculate = () => {
-    const breakEven = parseFloat(breakEvenInput) || 0;
-    const prevRev = parseFloat(previousRevenueInput) || 0;
+    const breakEven = parseBRL(breakEvenInput);
+    const prevRev = parseBRL(previousRevenueInput);
     const infl = parseFloat(inflationRate) || 0;
     const mkt = parseFloat(marketGrowth) || 0;
     const desired = parseFloat(desiredGrowth) || 0;
