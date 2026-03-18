@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, Users, ShoppingBag, User, Plus, Store, Target, Calculator, BarChart3, PieChart, BookOpen, FileText, Heart } from "lucide-react";
+import { Home, Users, ShoppingBag, User, Plus, Store, Target, Calculator, BarChart3, PieChart, BookOpen, FileText, Heart, Rocket } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,7 @@ const adminNavItems = [
   { path: "/content-center", icon: BookOpen, label: "Central de Conteúdo", roles: ["admin", "manager", "seller"] },
   { path: "/manual", icon: FileText, label: "Manual", roles: ["admin", "manager", "seller"] },
   { path: "/culture", icon: Heart, label: "Cultura", roles: ["admin", "manager", "seller"] },
+  { path: "/onboarding", icon: Rocket, label: "Primeiros Passos", roles: ["admin", "manager", "seller"] },
 ];
 
 interface AppLayoutProps {
