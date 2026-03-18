@@ -17,6 +17,7 @@ import UsersManagement from "./pages/UsersManagement.tsx";
 import GoalsManagement from "./pages/GoalsManagement.tsx";
 import GoalPlanner from "./pages/GoalPlanner.tsx";
 import GoalPerformance from "./pages/GoalPerformance.tsx";
+import ConversionAnalysis from "./pages/ConversionAnalysis.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
