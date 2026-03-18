@@ -121,6 +121,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/content-center"
+              element={
+                <ProtectedRoute>
+                  <ContentCenter />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

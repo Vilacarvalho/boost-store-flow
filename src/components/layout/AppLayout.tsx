@@ -19,6 +19,7 @@ const adminNavItems = [
   { path: "/goal-planner", icon: Calculator, label: "Planejador de Metas", roles: ["admin"] },
   { path: "/goal-performance", icon: BarChart3, label: "Performance de Metas", roles: ["admin", "manager", "seller"] },
   { path: "/conversion-analysis", icon: PieChart, label: "Análise de Conversão", roles: ["admin", "manager", "seller"] },
+  { path: "/content-center", icon: BookOpen, label: "Central de Conteúdo", roles: ["admin", "manager", "seller"] },
 ];
 
 interface AppLayoutProps {
