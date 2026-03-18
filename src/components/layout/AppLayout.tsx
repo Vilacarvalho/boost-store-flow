@@ -22,6 +22,7 @@ const adminNavItems = [
   { path: "/content-center", icon: BookOpen, label: "Central de Conteúdo", roles: ["admin", "manager", "seller"] },
   { path: "/manual", icon: FileText, label: "Manual", roles: ["admin", "manager", "seller"] },
   { path: "/culture", icon: Heart, label: "Cultura", roles: ["admin", "manager", "seller"] },
+  { path: "/onboarding", icon: Rocket, label: "Primeiros Passos", roles: ["admin", "manager", "seller"] },
 ];
 
 interface AppLayoutProps {
