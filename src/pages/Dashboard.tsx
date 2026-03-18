@@ -261,7 +261,7 @@ const Dashboard = () => {
             />
             <MetricCard
               label="Ticket Médio"
-              value={`R$ ${(metrics?.avg_ticket || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+              value={formatBRL(metrics?.avg_ticket || 0)}
               icon={TrendingUp}
             />
             <MetricCard
