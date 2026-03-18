@@ -92,7 +92,7 @@ export default function ContentCard({ content: c, storeName, isAdmin, viewCount,
                 </Badge>
               )}
               {!isAdmin && viewed && (
-                <Badge variant="outline" className="text-[10px] text-green-600">Visualizado</Badge>
+                <Badge variant="secondary" className="text-[10px]">Visualizado</Badge>
               )}
               {!isAdmin && !viewed && isRequired && (
                 <Badge variant="destructive" className="text-[10px]">Não lido</Badge>
