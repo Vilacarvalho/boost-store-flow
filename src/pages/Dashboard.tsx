@@ -1,29 +1,34 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, Target, ShoppingCart, BarChart3, Trophy, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/layout/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data
-const mockUser = { name: "Carlos", role: "seller" };
-const mockMetrics = {
-  salesTotal: 4280,
-  salesCount: 7,
-  goalAmount: 8000,
-  conversionRate: 68,
-  avgTicket: 611.43,
-  attendancesTotal: 12,
-};
+interface Metrics {
+  total_sales: number;
+  won_sales: number;
+  total_value: number;
+  avg_ticket: number;
+  conversion_rate: number;
+  total_attendances: number;
+}
 
-const mockRanking = [
-  { name: "Ana Silva", sales: 6200, conversion: 78, position: 1 },
-  { name: "Carlos Souza", sales: 4280, conversion: 68, position: 2 },
-  { name: "Julia Santos", sales: 3100, conversion: 55, position: 3 },
-];
+interface RankingEntry {
+  seller_id: string;
+  seller_name: string;
+  total_value: number;
+  won_count: number;
+  total_count: number;
+  conversion_rate: number;
+}
 
-const mockLostAttendances = [
-  { customer: "Maria Oliveira", reason: "Preço", time: "14:30" },
-  { customer: "João Pedro", reason: "Vai pensar", time: "11:15" },
-];
+interface LostSale {
+  customer_name: string;
+  objection_reason: string;
+  created_at: string;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 10 },
@@ -59,8 +64,99 @@ const MetricCard = ({
 );
 
 const Dashboard = () => {
-  const goalProgress = (mockMetrics.salesTotal / mockMetrics.goalAmount) * 100;
-  const remaining = mockMetrics.goalAmount - mockMetrics.salesTotal;
+  const { profile, user } = useAuth();
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [ranking, setRanking] = useState<RankingEntry[]>([]);
+  const [lostSales, setLostSales] = useState<LostSale[]>([]);
+  const [goalTarget, setGoalTarget] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile?.store_id || !user) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+
+      // Fetch metrics
+      const { data: metricsData } = await supabase.rpc("get_daily_metrics", {
+        _store_id: profile.store_id!,
+      });
+
+      if (metricsData && metricsData.length > 0) {
+        setMetrics(metricsData[0] as Metrics);
+      } else {
+        setMetrics({
+          total_sales: 0, won_sales: 0, total_value: 0,
+          avg_ticket: 0, conversion_rate: 0, total_attendances: 0,
+        });
+      }
+
+      // Fetch ranking
+      const { data: rankingData } = await supabase.rpc("get_seller_ranking", {
+        _store_id: profile.store_id!,
+      });
+      if (rankingData) setRanking(rankingData as RankingEntry[]);
+
+      // Fetch lost sales
+      const today = new Date().toISOString().split("T")[0];
+      const { data: lostData } = await supabase
+        .from("sales")
+        .select("objection_reason, created_at, customers(name)")
+        .eq("store_id", profile.store_id!)
+        .eq("status", "lost")
+        .gte("created_at", today)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (lostData) {
+        setLostSales(
+          lostData.map((s: any) => ({
+            customer_name: s.customers?.name || "Cliente",
+            objection_reason: s.objection_reason || "Não informado",
+            created_at: s.created_at,
+          }))
+        );
+      }
+
+      // Fetch goal
+      const { data: goalData } = await supabase
+        .from("goals")
+        .select("target_value")
+        .eq("user_id", user.id)
+        .eq("period_type", "daily")
+        .eq("period_start", today)
+        .maybeSingle();
+
+      if (goalData) setGoalTarget(goalData.target_value);
+      else setGoalTarget(5000); // Default goal
+
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [profile?.store_id, user]);
+
+  const totalValue = metrics?.total_value || 0;
+  const goalProgress = goalTarget > 0 ? (totalValue / goalTarget) * 100 : 0;
+  const remaining = Math.max(0, goalTarget - totalValue);
+  const userName = profile?.name?.split(" ")[0] || "Vendedor";
+
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Bom dia";
+    if (h < 18) return "Boa tarde";
+    return "Boa noite";
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="md:ml-64 flex items-center justify-center min-h-[60vh]">
+          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -68,17 +164,27 @@ const Dashboard = () => {
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
           {/* Header */}
           <motion.div {...fadeUp} className="space-y-1">
-            <p className="text-sm text-muted-foreground">Bom dia,</p>
+            <p className="text-sm text-muted-foreground">{getGreeting()},</p>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              {mockUser.name} 👋
+              {userName} 👋
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Você está a{" "}
-              <span className="font-semibold text-primary tabular-nums">
-                R$ {remaining.toLocaleString("pt-BR")}
-              </span>{" "}
-              da sua meta do dia.
-            </p>
+            {remaining > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Você está a{" "}
+                <span className="font-semibold text-primary tabular-nums">
+                  R$ {remaining.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                </span>{" "}
+                da sua meta do dia.
+              </p>
+            ) : totalValue > 0 ? (
+              <p className="text-sm text-success font-medium">
+                🎉 Meta do dia atingida!
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Inicie um atendimento para começar o dia.
+              </p>
+            )}
           </motion.div>
 
           {/* Goal Progress */}
@@ -95,13 +201,13 @@ const Dashboard = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
-                R$ {mockMetrics.salesTotal.toLocaleString("pt-BR")}
+                R$ {totalValue.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
               </span>
               <span className="text-sm text-muted-foreground tabular-nums">
-                / R$ {mockMetrics.goalAmount.toLocaleString("pt-BR")}
+                / R$ {goalTarget.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
               </span>
             </div>
-            <Progress value={goalProgress} className="h-2 rounded-full" />
+            <Progress value={Math.min(goalProgress, 100)} className="h-2 rounded-full" />
             <p className="text-xs text-muted-foreground">
               {goalProgress.toFixed(0)}% atingido
             </p>
@@ -115,102 +221,122 @@ const Dashboard = () => {
           >
             <MetricCard
               label="Vendas"
-              value={mockMetrics.salesCount.toString()}
+              value={(metrics?.won_sales || 0).toString()}
               icon={ShoppingCart}
-              trend="+2 vs ontem"
             />
             <MetricCard
               label="Conversão"
-              value={`${mockMetrics.conversionRate}%`}
+              value={`${metrics?.conversion_rate || 0}%`}
               icon={BarChart3}
             />
             <MetricCard
               label="Ticket Médio"
-              value={`R$ ${mockMetrics.avgTicket.toFixed(0)}`}
+              value={`R$ ${(metrics?.avg_ticket || 0).toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
               icon={TrendingUp}
             />
             <MetricCard
               label="Atendimentos"
-              value={mockMetrics.attendancesTotal.toString()}
+              value={(metrics?.total_attendances || 0).toString()}
               icon={ShoppingCart}
             />
           </motion.div>
 
           {/* Ranking */}
-          <motion.div
-            {...fadeUp}
-            transition={{ ...fadeUp.transition, delay: 0.15 }}
-            className="space-y-3"
-          >
-            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Ranking do Dia
-            </h2>
-            <div className="space-y-2">
-              {mockRanking.map((seller) => (
-                <div
-                  key={seller.name}
-                  className={`bg-card rounded-2xl p-4 shadow-card flex items-center gap-4 ${
-                    seller.name === mockUser.name ? "ring-2 ring-primary/20" : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-secondary">
-                    <Trophy
-                      className={`h-4 w-4 ${
-                        seller.position === 1
-                          ? "text-warning"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {seller.name}
+          {ranking.length > 0 && (
+            <motion.div
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.15 }}
+              className="space-y-3"
+            >
+              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Ranking do Dia
+              </h2>
+              <div className="space-y-2">
+                {ranking.map((seller, i) => (
+                  <div
+                    key={seller.seller_id}
+                    className={`bg-card rounded-2xl p-4 shadow-card flex items-center gap-4 ${
+                      seller.seller_id === user?.id ? "ring-2 ring-primary/20" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-secondary">
+                      {i === 0 ? (
+                        <Trophy className="h-4 w-4 text-warning" />
+                      ) : (
+                        <span className="text-xs font-semibold text-muted-foreground">{i + 1}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {seller.seller_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {seller.conversion_rate}% conversão
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground tabular-nums">
+                      R$ {seller.total_value.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {seller.conversion}% conversão
-                    </p>
                   </div>
-                  <p className="text-sm font-semibold text-foreground tabular-nums">
-                    R$ {seller.sales.toLocaleString("pt-BR")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Lost Attendances */}
-          <motion.div
-            {...fadeUp}
-            transition={{ ...fadeUp.transition, delay: 0.2 }}
-            className="space-y-3"
-          >
-            <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Atendimentos Perdidos
-            </h2>
-            <div className="space-y-2">
-              {mockLostAttendances.map((att, i) => (
-                <div
-                  key={i}
-                  className="bg-card rounded-2xl p-4 shadow-card flex items-center gap-3"
-                >
-                  <div className="flex items-center justify-center h-8 w-8 rounded-full bg-destructive/10">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
+          {lostSales.length > 0 && (
+            <motion.div
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.2 }}
+              className="space-y-3"
+            >
+              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Atendimentos Perdidos
+              </h2>
+              <div className="space-y-2">
+                {lostSales.map((att, i) => (
+                  <div
+                    key={i}
+                    className="bg-card rounded-2xl p-4 shadow-card flex items-center gap-3"
+                  >
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-destructive/10">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {att.customer_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Motivo: {att.objection_reason}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {new Date(att.created_at).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {att.customer}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Motivo: {att.reason}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {att.time}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Empty state */}
+          {(metrics?.total_attendances || 0) === 0 && (
+            <motion.div
+              {...fadeUp}
+              className="bg-card rounded-2xl p-8 shadow-card text-center space-y-2"
+            >
+              <ShoppingCart className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                Nenhum atendimento hoje ainda.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Toque no botão + para iniciar.
+              </p>
+            </motion.div>
+          )}
         </div>
       </div>
     </AppLayout>
