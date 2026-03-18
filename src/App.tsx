@@ -94,6 +94,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/goal-planner"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <GoalPlanner />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
