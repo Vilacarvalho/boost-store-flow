@@ -112,6 +112,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/conversion-analysis"
+              element={
+                <ProtectedRoute>
+                  <ConversionAnalysis />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
