@@ -135,14 +135,96 @@ export type Database = {
           },
         ]
       }
+      goal_plans: {
+        Row: {
+          applied_goal_value: number | null
+          break_even_value: number
+          calculation_notes: string | null
+          created_at: string
+          created_by: string
+          desired_growth_rate: number
+          id: string
+          inflation_rate: number
+          market_growth_rate: number
+          organization_id: string
+          period_type: string
+          previous_revenue: number
+          reference_period_end: string
+          reference_period_start: string
+          store_id: string | null
+          suggested_goal_value: number
+          target_period_end: string
+          target_period_start: string
+        }
+        Insert: {
+          applied_goal_value?: number | null
+          break_even_value?: number
+          calculation_notes?: string | null
+          created_at?: string
+          created_by: string
+          desired_growth_rate?: number
+          id?: string
+          inflation_rate?: number
+          market_growth_rate?: number
+          organization_id: string
+          period_type?: string
+          previous_revenue?: number
+          reference_period_end: string
+          reference_period_start: string
+          store_id?: string | null
+          suggested_goal_value?: number
+          target_period_end: string
+          target_period_start: string
+        }
+        Update: {
+          applied_goal_value?: number | null
+          break_even_value?: number
+          calculation_notes?: string | null
+          created_at?: string
+          created_by?: string
+          desired_growth_rate?: number
+          id?: string
+          inflation_rate?: number
+          market_growth_rate?: number
+          organization_id?: string
+          period_type?: string
+          previous_revenue?: number
+          reference_period_end?: string
+          reference_period_start?: string
+          store_id?: string | null
+          suggested_goal_value?: number
+          target_period_end?: string
+          target_period_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goal_plans_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           created_at: string
           current_value: number
+          end_date: string | null
+          goal_plan_id: string | null
           id: string
           organization_id: string
           period_start: string
           period_type: Database["public"]["Enums"]["period_type"]
+          source: string | null
+          start_date: string | null
           store_id: string | null
           target_value: number
           user_id: string | null
@@ -150,10 +232,14 @@ export type Database = {
         Insert: {
           created_at?: string
           current_value?: number
+          end_date?: string | null
+          goal_plan_id?: string | null
           id?: string
           organization_id: string
           period_start?: string
           period_type?: Database["public"]["Enums"]["period_type"]
+          source?: string | null
+          start_date?: string | null
           store_id?: string | null
           target_value?: number
           user_id?: string | null
@@ -161,15 +247,26 @@ export type Database = {
         Update: {
           created_at?: string
           current_value?: number
+          end_date?: string | null
+          goal_plan_id?: string | null
           id?: string
           organization_id?: string
           period_start?: string
           period_type?: Database["public"]["Enums"]["period_type"]
+          source?: string | null
+          start_date?: string | null
           store_id?: string | null
           target_value?: number
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "goals_goal_plan_id_fkey"
+            columns: ["goal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "goal_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "goals_organization_id_fkey"
             columns: ["organization_id"]

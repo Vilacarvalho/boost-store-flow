@@ -15,6 +15,7 @@ import Profile from "./pages/Profile.tsx";
 import StoresManagement from "./pages/StoresManagement.tsx";
 import UsersManagement from "./pages/UsersManagement.tsx";
 import GoalsManagement from "./pages/GoalsManagement.tsx";
+import GoalPlanner from "./pages/GoalPlanner.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -90,6 +91,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={["admin", "manager"]}>
                   <GoalsManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goal-planner"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <GoalPlanner />
                 </ProtectedRoute>
               }
             />
