@@ -109,7 +109,7 @@ const Sales = () => {
                       </p>
                     </div>
                     <span className={`text-sm font-semibold tabular-nums ${sale.status === "won" ? "text-success" : "text-muted-foreground"}`}>
-                      {sale.status === "won" ? `R$ ${sale.total_value.toLocaleString("pt-BR")}` : "Perdido"}
+                      {sale.status === "won" ? formatBRL(sale.total_value) : "Perdido"}
                     </span>
                   </motion.div>
                 ))}
