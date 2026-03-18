@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_access: {
+        Row: {
+          content_id: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          content_id: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          content_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_access_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contents: {
+        Row: {
+          category: string
+          content_type: string
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string | null
+          external_url: string | null
+          file_url: string | null
+          id: string
+          is_featured: boolean
+          organization_id: string
+          start_date: string
+          store_id: string | null
+          title: string
+        }
+        Insert: {
+          category?: string
+          content_type?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date?: string | null
+          external_url?: string | null
+          file_url?: string | null
+          id?: string
+          is_featured?: boolean
+          organization_id: string
+          start_date?: string
+          store_id?: string | null
+          title: string
+        }
+        Update: {
+          category?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string | null
+          external_url?: string | null
+          file_url?: string | null
+          id?: string
+          is_featured?: boolean
+          organization_id?: string
+          start_date?: string
+          store_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
