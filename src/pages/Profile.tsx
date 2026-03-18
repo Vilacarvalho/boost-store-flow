@@ -126,6 +126,14 @@ const Profile = () => {
             </div>
           )}
 
+          {role === "admin" && (
+            <Button variant="outline" size="lg" onClick={handleSeed} disabled={seeding}
+              className="w-full justify-start gap-3 rounded-xl">
+              <Building2 className="h-5 w-5" />
+              {seeding ? "Criando dados multi-loja..." : "🔧 Seed Multi-Loja (teste)"}
+            </Button>
+          )}
+
           <Button variant="ghost" size="lg" onClick={handleSignOut}
             className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/5 rounded-xl">
             <LogOut className="h-5 w-5" />
