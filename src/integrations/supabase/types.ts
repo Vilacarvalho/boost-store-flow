@@ -578,8 +578,12 @@ export type Database = {
           customer_id: string | null
           driver: Database["public"]["Enums"]["customer_profile_type"] | null
           id: string
+          notes: string | null
+          objection_description: string | null
           objection_reason: string | null
           organization_id: string
+          product_type: string | null
+          products_count: number | null
           products_shown_count: number | null
           seller_id: string
           status: Database["public"]["Enums"]["sale_status"]
@@ -592,8 +596,12 @@ export type Database = {
           customer_id?: string | null
           driver?: Database["public"]["Enums"]["customer_profile_type"] | null
           id?: string
+          notes?: string | null
+          objection_description?: string | null
           objection_reason?: string | null
           organization_id: string
+          product_type?: string | null
+          products_count?: number | null
           products_shown_count?: number | null
           seller_id: string
           status: Database["public"]["Enums"]["sale_status"]
@@ -606,8 +614,12 @@ export type Database = {
           customer_id?: string | null
           driver?: Database["public"]["Enums"]["customer_profile_type"] | null
           id?: string
+          notes?: string | null
+          objection_description?: string | null
           objection_reason?: string | null
           organization_id?: string
+          product_type?: string | null
+          products_count?: number | null
           products_shown_count?: number | null
           seller_id?: string
           status?: Database["public"]["Enums"]["sale_status"]
