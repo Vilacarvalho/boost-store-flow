@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Calculator, TrendingUp, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Calculator, TrendingUp, CheckCircle2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
@@ -15,6 +15,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import PlanningModeSelector, { type PlanningMode } from "@/components/goal-planner/PlanningModeSelector";
+import ViabilityAlerts, { getViabilityAlerts, type ViabilityAlert } from "@/components/goal-planner/ViabilityAlerts";
+import DistributionDialog from "@/components/goal-planner/DistributionDialog";
 
 const periodOptions = [
   { value: "monthly", label: "Mensal" },
@@ -38,21 +41,51 @@ interface CalcResult {
   diffPercent: number;
   ruleNote: string;
   appliedValue: number;
+  alerts: ViabilityAlert[];
+  viabilityStatus: string;
+}
+
+function calculateSuggested(
+  mode: PlanningMode,
+  prevRev: number,
+  breakEven: number,
+  infl: number,
+  mkt: number,
+  desired: number
+) {
+  let projection: number;
+  switch (mode) {
+    case "conservative":
+      projection = prevRev * (1 + infl / 100);
+      break;
+    case "balanced":
+      projection = prevRev * (1 + infl / 100) * (1 + mkt / 100);
+      break;
+    case "aggressive":
+      projection = prevRev * (1 + infl / 100) * (1 + mkt / 100) * (1 + desired / 100);
+      break;
+  }
+  return Math.max(breakEven, projection);
+}
+
+function getViabilityStatus(alerts: ViabilityAlert[]): string {
+  if (alerts.some((a) => a.type === "danger")) return "aggressive";
+  if (alerts.some((a) => a.type === "warning")) return "warning";
+  return "viable";
 }
 
 const GoalPlanner = () => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
 
-  // Filters
   const [periodType, setPeriodType] = useState("monthly");
   const [refStart, setRefStart] = useState("");
   const [refEnd, setRefEnd] = useState("");
   const [targetStart, setTargetStart] = useState("");
   const [targetEnd, setTargetEnd] = useState("");
   const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const [planningMode, setPlanningMode] = useState<PlanningMode>("balanced");
 
-  // Input fields
   const [breakEvenInput, setBreakEvenInput] = useState("");
   const [previousRevenueInput, setPreviousRevenueInput] = useState("");
   const [inflationRate, setInflationRate] = useState("0");
@@ -60,9 +93,18 @@ const GoalPlanner = () => {
   const [desiredGrowth, setDesiredGrowth] = useState("0");
   const [notes, setNotes] = useState("");
 
-  // Results
   const [results, setResults] = useState<CalcResult[]>([]);
   const [calculated, setCalculated] = useState(false);
+
+  // Distribution dialog state
+  const [distDialog, setDistDialog] = useState<{
+    open: boolean;
+    storeId: string;
+    storeName: string;
+    goalValue: number;
+    goalPlanId: string;
+    parentGoalId: string;
+  } | null>(null);
 
   const { data: stores = [] } = useQuery({
     queryKey: ["planner-stores"],
@@ -95,11 +137,7 @@ const GoalPlanner = () => {
   };
 
   const selectAllStores = () => {
-    if (selectedStoreIds.length === stores.length) {
-      setSelectedStoreIds([]);
-    } else {
-      setSelectedStoreIds(stores.map((s) => s.id));
-    }
+    setSelectedStoreIds((prev) => prev.length === stores.length ? [] : stores.map((s) => s.id));
   };
 
   const calculate = () => {
@@ -114,13 +152,13 @@ const GoalPlanner = () => {
       : stores;
 
     const newResults: CalcResult[] = targetStores.map((store) => {
-      const revenueProjection = prevRev * (1 + infl / 100) * (1 + mkt / 100) * (1 + desired / 100);
-      const suggested = Math.max(breakEven, revenueProjection);
+      const suggested = calculateSuggested(planningMode, prevRev, breakEven, infl, mkt, desired);
       const diff = suggested - prevRev;
-      const diffPercent = prevRev > 0 ? ((diff / prevRev) * 100) : 0;
-      const ruleNote = suggested === breakEven && revenueProjection < breakEven
-        ? "⚠️ Meta ajustada ao ponto de equilíbrio (projeção abaixo do mínimo)"
-        : "✅ Meta baseada na projeção de crescimento";
+      const diffPercent = prevRev > 0 ? (diff / prevRev) * 100 : 0;
+      const alerts = getViabilityAlerts(suggested, breakEven, prevRev);
+      const viabilityStatus = getViabilityStatus(alerts);
+
+      const ruleNote = alerts.map((a) => a.title).join("; ");
 
       return {
         storeId: store.id,
@@ -132,6 +170,8 @@ const GoalPlanner = () => {
         diffPercent,
         ruleNote,
         appliedValue: suggested,
+        alerts,
+        viabilityStatus,
       };
     });
 
@@ -149,9 +189,9 @@ const GoalPlanner = () => {
     mutationFn: async (storeResults: CalcResult[]) => {
       const orgId = profile!.organization_id!;
       const userId = profile!.id;
+      const appliedGoals: { storeId: string; goalPlanId: string; goalId: string; value: number; storeName: string }[] = [];
 
       for (const r of storeResults) {
-        // Save plan history
         const { data: plan, error: planErr } = await supabase
           .from("goal_plans")
           .insert({
@@ -171,35 +211,56 @@ const GoalPlanner = () => {
             applied_goal_value: r.appliedValue,
             calculation_notes: notes || null,
             created_by: userId,
-          })
+            planning_mode: planningMode,
+            viability_status: r.viabilityStatus,
+          } as any)
           .select("id")
           .single();
 
         if (planErr) throw planErr;
 
-        // Map period_type for goals table (it uses the enum)
-        const goalPeriod = periodType === "monthly" ? "monthly" : periodType === "quarterly" || periodType === "semiannual" || periodType === "annual" ? "monthly" : "monthly";
-
-        // Create goal entry
-        const { error: goalErr } = await supabase.from("goals").insert({
+        const { data: goal, error: goalErr } = await supabase.from("goals").insert({
           organization_id: orgId,
           store_id: r.storeId,
           target_value: r.appliedValue,
-          period_type: goalPeriod as any,
+          period_type: "monthly" as const,
           period_start: targetStart,
           start_date: targetStart,
           end_date: targetEnd,
           source: "planner",
           goal_plan_id: plan.id,
-        });
+        }).select("id").single();
 
         if (goalErr) throw goalErr;
+
+        appliedGoals.push({
+          storeId: r.storeId,
+          goalPlanId: plan.id,
+          goalId: goal.id,
+          value: r.appliedValue,
+          storeName: r.storeName,
+        });
       }
+
+      return appliedGoals;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["goal-plans-history"] });
       queryClient.invalidateQueries({ queryKey: ["admin-goals"] });
       toast.success("Metas aplicadas com sucesso!");
+
+      // If single store, offer distribution
+      if (data.length === 1) {
+        const g = data[0];
+        setDistDialog({
+          open: true,
+          storeId: g.storeId,
+          storeName: g.storeName,
+          goalValue: g.value,
+          goalPlanId: g.goalPlanId,
+          parentGoalId: g.goalId,
+        });
+      }
     },
     onError: (e: Error) => toast.error("Erro ao aplicar metas: " + e.message),
   });
@@ -223,6 +284,19 @@ const GoalPlanner = () => {
 
   const canCalculate = breakEvenInput && previousRevenueInput;
 
+  // Aggregate alerts for summary
+  const allAlerts = useMemo(() => {
+    if (results.length === 0) return [];
+    // Show unique alerts from first result (same params = same alerts)
+    return results[0]?.alerts || [];
+  }, [results]);
+
+  const modeLabels: Record<string, string> = {
+    conservative: "Conservador",
+    balanced: "Equilibrado",
+    aggressive: "Agressivo",
+  };
+
   return (
     <AppLayout showFab={false}>
       <div className="md:ml-64">
@@ -242,6 +316,9 @@ const GoalPlanner = () => {
               <CardTitle className="text-base">Parâmetros do Cálculo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Planning Mode */}
+              <PlanningModeSelector value={planningMode} onChange={setPlanningMode} />
+
               {/* Period & Store Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -303,60 +380,30 @@ const GoalPlanner = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Ponto de Equilíbrio (R$)</Label>
-                  <Input
-                    type="number"
-                    placeholder="Ex: 50000"
-                    value={breakEvenInput}
-                    onChange={(e) => setBreakEvenInput(e.target.value)}
-                  />
+                  <Input type="number" placeholder="Ex: 50000" value={breakEvenInput} onChange={(e) => setBreakEvenInput(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Faturamento Anterior (R$)</Label>
-                  <Input
-                    type="number"
-                    placeholder="Ex: 80000"
-                    value={previousRevenueInput}
-                    onChange={(e) => setPreviousRevenueInput(e.target.value)}
-                  />
+                  <Input type="number" placeholder="Ex: 80000" value={previousRevenueInput} onChange={(e) => setPreviousRevenueInput(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Inflação (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={inflationRate}
-                    onChange={(e) => setInflationRate(e.target.value)}
-                  />
+                  <Input type="number" step="0.1" value={inflationRate} onChange={(e) => setInflationRate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Crescimento do Mercado (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={marketGrowth}
-                    onChange={(e) => setMarketGrowth(e.target.value)}
-                  />
+                  <Input type="number" step="0.1" value={marketGrowth} onChange={(e) => setMarketGrowth(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Crescimento Desejado (%) <span className="text-muted-foreground text-xs">opcional</span></Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={desiredGrowth}
-                    onChange={(e) => setDesiredGrowth(e.target.value)}
-                  />
+                  <Input type="number" step="0.1" value={desiredGrowth} onChange={(e) => setDesiredGrowth(e.target.value)} />
                 </div>
               </div>
 
               {/* Notes */}
               <div className="space-y-2">
                 <Label>Observações</Label>
-                <Textarea
-                  placeholder="Notas sobre o planejamento..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                />
+                <Textarea placeholder="Notas sobre o planejamento..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
               </div>
 
               <Button onClick={calculate} disabled={!canCalculate} className="w-full sm:w-auto">
@@ -366,17 +413,23 @@ const GoalPlanner = () => {
             </CardContent>
           </Card>
 
+          {/* Viability Alerts */}
+          {calculated && allAlerts.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <ViabilityAlerts alerts={allAlerts} />
+            </motion.div>
+          )}
+
           {/* Results */}
           {calculated && results.length > 0 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Resultado do Cálculo</CardTitle>
-                  <Button
-                    onClick={applyAll}
-                    disabled={applyMutation.isPending}
-                    size="sm"
-                  >
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base">Resultado do Cálculo</CardTitle>
+                    <Badge variant="outline" className="text-xs">{modeLabels[planningMode]}</Badge>
+                  </div>
+                  <Button onClick={applyAll} disabled={applyMutation.isPending} size="sm">
                     <CheckCircle2 className="h-4 w-4 mr-1" />
                     {applyMutation.isPending ? "Aplicando..." : "Aplicar Todas"}
                   </Button>
@@ -392,7 +445,7 @@ const GoalPlanner = () => {
                           <TableHead className="text-right">Meta Sugerida</TableHead>
                           <TableHead className="text-right">Diferença</TableHead>
                           <TableHead className="text-right">Valor Aplicado</TableHead>
-                          <TableHead>Regra</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead className="w-28" />
                         </TableRow>
                       </TableHeader>
@@ -405,7 +458,7 @@ const GoalPlanner = () => {
                             <TableCell className="text-right font-semibold text-primary">{formatCurrency(r.suggested)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex flex-col items-end">
-                                <span className={r.diff >= 0 ? "text-green-600" : "text-destructive"}>
+                                <span className={r.diff >= 0 ? "text-success" : "text-destructive"}>
                                   {formatCurrency(r.diff)}
                                 </span>
                                 <span className="text-xs text-muted-foreground">{formatPercent(r.diffPercent)}</span>
@@ -420,7 +473,12 @@ const GoalPlanner = () => {
                               />
                             </TableCell>
                             <TableCell>
-                              <span className="text-xs">{r.ruleNote}</span>
+                              <Badge
+                                variant={r.viabilityStatus === "viable" ? "default" : r.viabilityStatus === "warning" ? "secondary" : "destructive"}
+                                className="text-xs"
+                              >
+                                {r.viabilityStatus === "viable" ? "Viável" : r.viabilityStatus === "warning" ? "Atenção" : "Agressiva"}
+                              </Badge>
                             </TableCell>
                             <TableCell>
                               <Button
@@ -464,6 +522,7 @@ const GoalPlanner = () => {
                       <TableRow>
                         <TableHead>Loja</TableHead>
                         <TableHead>Período</TableHead>
+                        <TableHead>Modo</TableHead>
                         <TableHead className="text-right">Meta Sugerida</TableHead>
                         <TableHead className="text-right">Meta Aplicada</TableHead>
                         <TableHead>Data</TableHead>
@@ -477,6 +536,9 @@ const GoalPlanner = () => {
                             <Badge variant="outline">
                               {periodOptions.find((p) => p.value === h.period_type)?.label || h.period_type}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground">{modeLabels[h.planning_mode] || "—"}</span>
                           </TableCell>
                           <TableCell className="text-right">{formatCurrency(Number(h.suggested_goal_value))}</TableCell>
                           <TableCell className="text-right font-medium">
@@ -495,6 +557,26 @@ const GoalPlanner = () => {
           </Card>
         </div>
       </div>
+
+      {/* Distribution Dialog */}
+      {distDialog && (
+        <DistributionDialog
+          open={distDialog.open}
+          onClose={() => setDistDialog(null)}
+          storeId={distDialog.storeId}
+          storeName={distDialog.storeName}
+          goalValue={distDialog.goalValue}
+          organizationId={profile!.organization_id!}
+          targetStart={targetStart}
+          targetEnd={targetEnd}
+          periodType={periodType}
+          goalPlanId={distDialog.goalPlanId}
+          parentGoalId={distDialog.parentGoalId}
+          onDistributed={() => {
+            queryClient.invalidateQueries({ queryKey: ["admin-goals"] });
+          }}
+        />
+      )}
     </AppLayout>
   );
 };
