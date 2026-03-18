@@ -118,17 +118,46 @@ const Dashboard = () => {
         );
       }
 
-      // Fetch goal
-      const { data: goalData } = await supabase
+      // Fetch goal — check user-specific goal first, then store goal, then default
+      const { data: userGoal } = await supabase
         .from("goals")
         .select("target_value")
         .eq("user_id", user.id)
-        .eq("period_type", "daily")
-        .eq("period_start", today)
+        .gte("end_date", today)
+        .lte("start_date", today)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (goalData) setGoalTarget(goalData.target_value);
-      else setGoalTarget(5000); // Default goal
+      if (userGoal) {
+        setGoalTarget(userGoal.target_value);
+      } else {
+        // Fallback to store-level goal
+        const { data: storeGoal } = await supabase
+          .from("goals")
+          .select("target_value")
+          .eq("store_id", profile.store_id!)
+          .is("user_id", null)
+          .gte("end_date", today)
+          .lte("start_date", today)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (storeGoal) {
+          setGoalTarget(storeGoal.target_value);
+        } else {
+          // Legacy daily goal fallback
+          const { data: dailyGoal } = await supabase
+            .from("goals")
+            .select("target_value")
+            .eq("user_id", user.id)
+            .eq("period_type", "daily")
+            .eq("period_start", today)
+            .maybeSingle();
+          setGoalTarget(dailyGoal?.target_value || 5000);
+        }
+      }
 
       setLoading(false);
     };
