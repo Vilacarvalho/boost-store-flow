@@ -14,6 +14,7 @@ interface Metrics {
   avg_ticket: number;
   conversion_rate: number;
   total_attendances: number;
+  avg_pa: number;
 }
 
 interface RankingEntry {
@@ -23,6 +24,7 @@ interface RankingEntry {
   won_count: number;
   total_count: number;
   conversion_rate: number;
+  avg_pa: number;
 }
 
 interface LostSale {
@@ -88,7 +90,7 @@ const Dashboard = () => {
       } else {
         setMetrics({
           total_sales: 0, won_sales: 0, total_value: 0,
-          avg_ticket: 0, conversion_rate: 0, total_attendances: 0,
+          avg_ticket: 0, conversion_rate: 0, total_attendances: 0, avg_pa: 0,
         });
       }
 
@@ -265,8 +267,8 @@ const Dashboard = () => {
               icon={TrendingUp}
             />
             <MetricCard
-              label="Atendimentos"
-              value={(metrics?.total_attendances || 0).toString()}
+              label="P.A. Médio"
+              value={(metrics?.avg_pa || 0).toFixed(1)}
               icon={ShoppingCart}
             />
           </motion.div>
@@ -301,7 +303,7 @@ const Dashboard = () => {
                         {seller.seller_name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {seller.conversion_rate}% conversão
+                        {seller.conversion_rate}% conv. · P.A. {Number(seller.avg_pa || 0).toFixed(1)}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-foreground tabular-nums">

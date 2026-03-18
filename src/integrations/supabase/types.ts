@@ -711,6 +711,7 @@ export type Database = {
       get_daily_metrics: {
         Args: { _date?: string; _store_id: string }
         Returns: {
+          avg_pa: number
           avg_ticket: number
           conversion_rate: number
           total_attendances: number
@@ -722,6 +723,7 @@ export type Database = {
       get_seller_ranking: {
         Args: { _date?: string; _store_id: string }
         Returns: {
+          avg_pa: number
           conversion_rate: number
           seller_id: string
           seller_name: string
