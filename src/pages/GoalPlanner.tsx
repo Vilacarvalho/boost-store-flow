@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { parseBRL, formatBRL } from "@/lib/currency";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,8 +28,7 @@ const periodOptions = [
   { value: "annual", label: "Anual" },
 ];
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const formatCurrency = (v: number) => formatBRL(v);
 
 const formatPercent = (v: number) => `${v.toFixed(1)}%`;
 
@@ -141,8 +142,8 @@ const GoalPlanner = () => {
   };
 
   const calculate = () => {
-    const breakEven = parseFloat(breakEvenInput) || 0;
-    const prevRev = parseFloat(previousRevenueInput) || 0;
+    const breakEven = parseBRL(breakEvenInput);
+    const prevRev = parseBRL(previousRevenueInput);
     const infl = parseFloat(inflationRate) || 0;
     const mkt = parseFloat(marketGrowth) || 0;
     const desired = parseFloat(desiredGrowth) || 0;
@@ -379,12 +380,12 @@ const GoalPlanner = () => {
               {/* Financial inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Ponto de Equilíbrio (R$)</Label>
-                  <Input type="number" placeholder="Ex: 50000" value={breakEvenInput} onChange={(e) => setBreakEvenInput(e.target.value)} />
+                  <Label>Ponto de Equilíbrio</Label>
+                  <CurrencyInput value={breakEvenInput} onValueChange={setBreakEvenInput} placeholder="Ex: 100.000,00" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Faturamento Anterior (R$)</Label>
-                  <Input type="number" placeholder="Ex: 80000" value={previousRevenueInput} onChange={(e) => setPreviousRevenueInput(e.target.value)} />
+                  <Label>Faturamento Anterior</Label>
+                  <CurrencyInput value={previousRevenueInput} onValueChange={setPreviousRevenueInput} placeholder="Ex: 100.000,00" />
                 </div>
                 <div className="space-y-2">
                   <Label>Inflação (%)</Label>
@@ -465,11 +466,10 @@ const GoalPlanner = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                className="w-28 text-right"
-                                value={r.appliedValue}
-                                onChange={(e) => updateAppliedValue(r.storeId, e.target.value)}
+                              <CurrencyInput
+                                className="w-32 text-right"
+                                value={formatCurrency(r.appliedValue).replace("R$\u00a0", "")}
+                                onValueChange={(v) => updateAppliedValue(r.storeId, String(parseBRL(v)))}
                               />
                             </TableCell>
                             <TableCell>
