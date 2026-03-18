@@ -14,6 +14,7 @@ interface Metrics {
   avg_ticket: number;
   conversion_rate: number;
   total_attendances: number;
+  avg_pa: number;
 }
 
 interface RankingEntry {
