@@ -1,17 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Check, X, Minus, Plus,
+  ArrowLeft, Check, X, Minus, Plus, User, Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { parseBRL, formatBRL } from "@/lib/currency";
+
+/* ── helpers ─────────────────────────────────────── */
+
+const formatPhone = (v: string) => {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
+const digitsOnly = (v: string) => v.replace(/\D/g, "");
+
+/* ── constants ───────────────────────────────────── */
 
 const productTypes = [
   { id: "solar", label: "Solar", emoji: "🕶️" },
@@ -20,13 +38,11 @@ const productTypes = [
 ];
 
 const lossReasons = [
-  "Modelo indisponível",
-  "Preço",
-  "Vai comparar",
-  "Retorna depois",
-  "Sem receita",
-  "Outro",
+  "Modelo indisponível", "Preço", "Vai comparar",
+  "Retorna depois", "Sem receita", "Outro",
 ];
+
+/* ── component ───────────────────────────────────── */
 
 const NewAttendance = () => {
   const navigate = useNavigate();
@@ -34,6 +50,14 @@ const NewAttendance = () => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
+  // Customer (optional)
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Attendance fields
   const [productType, setProductType] = useState("");
   const [result, setResult] = useState<"won" | "lost" | "">("");
   const [objectionReason, setObjectionReason] = useState("");
@@ -41,6 +65,44 @@ const NewAttendance = () => {
   const [notes, setNotes] = useState("");
   const [productsCount, setProductsCount] = useState(1);
   const [totalValue, setTotalValue] = useState("");
+
+  // Smart prompt
+  const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
+
+  /* ── phone autocomplete ──────────────────────── */
+
+  const searchCustomerByPhone = useCallback(async (phone: string) => {
+    const digits = digitsOnly(phone);
+    if (digits.length < 10 || !profile?.organization_id) return;
+
+    const { data } = await supabase
+      .from("customers")
+      .select("id, name, whatsapp")
+      .eq("organization_id", profile.organization_id)
+      .eq("whatsapp", digits)
+      .limit(1);
+
+    if (data && data.length > 0) {
+      setMatchedCustomerId(data[0].id);
+      setCustomerName(data[0].name);
+      setAutoFilled(true);
+    } else {
+      setMatchedCustomerId(null);
+      if (autoFilled) { setCustomerName(""); setAutoFilled(false); }
+    }
+  }, [profile?.organization_id, autoFilled]);
+
+  const handlePhoneChange = (raw: string) => {
+    const formatted = formatPhone(raw);
+    setCustomerPhone(formatted);
+    setMatchedCustomerId(null);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchCustomerByPhone(formatted), 400);
+  };
+
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
+
+  /* ── validation ──────────────────────────────── */
 
   const canSubmit = () => {
     if (!productType || !result) return false;
@@ -55,19 +117,55 @@ const NewAttendance = () => {
     return true;
   };
 
-  const handleSubmit = async () => {
+  const hasCustomerData = () => customerName.trim() && digitsOnly(customerPhone).length >= 10;
+
+  /* ── submit ──────────────────────────────────── */
+
+  const handleAttemptSubmit = () => {
+    if (!canSubmit()) return;
+    // If customer data partially filled or empty, and no matched customer, show prompt
+    if (!matchedCustomerId && !hasCustomerData() && (customerName.trim() || customerPhone.trim())) {
+      // partial data — just submit without customer
+      doSubmit(null);
+    } else if (!matchedCustomerId && !hasCustomerData()) {
+      setShowCustomerPrompt(true);
+    } else {
+      doSubmit(matchedCustomerId);
+    }
+  };
+
+  const doSubmit = async (existingCustomerId: string | null) => {
     if (!user || !profile?.organization_id || !profile?.store_id) {
       toast({ title: "Erro", description: "Perfil incompleto. Configure sua loja.", variant: "destructive" });
       return;
     }
-    if (!canSubmit()) return;
 
     setSaving(true);
     try {
+      let customerId = existingCustomerId;
+
+      // Auto-create customer if name + phone provided and no match
+      if (!customerId && hasCustomerData()) {
+        const { data: newCustomer, error: custErr } = await supabase
+          .from("customers")
+          .insert({
+            organization_id: profile.organization_id,
+            store_id: profile.store_id,
+            name: customerName.trim(),
+            whatsapp: digitsOnly(customerPhone),
+            status: "new",
+          })
+          .select("id")
+          .single();
+        if (custErr) throw custErr;
+        customerId = newCustomer.id;
+      }
+
       const { error } = await supabase.from("sales").insert({
         organization_id: profile.organization_id,
         store_id: profile.store_id,
         seller_id: user.id,
+        customer_id: customerId,
         status: result as "won" | "lost",
         product_type: productType,
         objection_reason: result === "lost" ? objectionReason : null,
@@ -96,6 +194,8 @@ const NewAttendance = () => {
     }
   };
 
+  /* ── render ──────────────────────────────────── */
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -119,6 +219,34 @@ const NewAttendance = () => {
           transition={{ duration: 0.2 }}
           className="space-y-6"
         >
+          {/* 0. Customer (optional) */}
+          <FieldGroup label="Cliente (opcional)">
+            <div className="space-y-2">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Nome do cliente"
+                  value={customerName}
+                  onChange={(e) => { setCustomerName(e.target.value); if (autoFilled) setAutoFilled(false); }}
+                  className="pl-9 rounded-xl bg-secondary/50 border-0"
+                />
+              </div>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="(00) 00000-0000"
+                  value={customerPhone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  inputMode="tel"
+                  className="pl-9 rounded-xl bg-secondary/50 border-0"
+                />
+              </div>
+              {matchedCustomerId && (
+                <p className="text-xs text-primary font-medium">✓ Cliente encontrado no CRM</p>
+              )}
+            </div>
+          </FieldGroup>
+
           {/* 1. Product Type */}
           <FieldGroup label="Tipo de Produto *">
             <div className="grid grid-cols-3 gap-2">
@@ -163,7 +291,7 @@ const NewAttendance = () => {
             </div>
           </FieldGroup>
 
-          {/* 3. Loss Reason (only if lost) */}
+          {/* 3. Loss Reason */}
           {result === "lost" && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4">
               <FieldGroup label="Motivo *">
@@ -209,7 +337,7 @@ const NewAttendance = () => {
             />
           </FieldGroup>
 
-          {/* 5. Products Count (if won) */}
+          {/* 5. Products Count */}
           {result === "won" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <FieldGroup label="P.A. (Produtos por Atendimento) *">
@@ -241,7 +369,7 @@ const NewAttendance = () => {
             </motion.div>
           )}
 
-          {/* 6. Total Value (if won) */}
+          {/* 6. Total Value */}
           {result === "won" && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <FieldGroup label="Faturamento *">
@@ -263,8 +391,7 @@ const NewAttendance = () => {
           <Button
             size="lg"
             className="w-full rounded-xl font-semibold"
-            variant={result === "won" ? "default" : "default"}
-            onClick={handleSubmit}
+            onClick={handleAttemptSubmit}
             disabled={!canSubmit() || saving}
           >
             {saving ? "Salvando..." : result === "won" ? "🎉 Registrar Venda" : "Finalizar Atendimento"}
@@ -272,6 +399,32 @@ const NewAttendance = () => {
           </Button>
         </div>
       </div>
+
+      {/* Smart prompt dialog */}
+      <AlertDialog open={showCustomerPrompt} onOpenChange={setShowCustomerPrompt}>
+        <AlertDialogContent className="max-w-sm mx-auto rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base">Salvar cliente?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Quer salvar esse cliente para retorno ou acompanhamento?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <AlertDialogAction
+              onClick={() => { setShowCustomerPrompt(false); /* keep form open for user to fill */ }}
+              className="rounded-xl"
+            >
+              Salvar cliente
+            </AlertDialogAction>
+            <AlertDialogCancel
+              onClick={() => { setShowCustomerPrompt(false); doSubmit(null); }}
+              className="rounded-xl"
+            >
+              Continuar sem cliente
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
