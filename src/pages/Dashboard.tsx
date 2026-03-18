@@ -267,8 +267,8 @@ const Dashboard = () => {
               icon={TrendingUp}
             />
             <MetricCard
-              label="Atendimentos"
-              value={(metrics?.total_attendances || 0).toString()}
+              label="P.A. Médio"
+              value={(metrics?.avg_pa || 0).toFixed(1)}
               icon={ShoppingCart}
             />
           </motion.div>
