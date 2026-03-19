@@ -41,6 +41,31 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route
+              path="/post-login"
+              element={
+                <ProtectedRoute>
+                  <PostLoginRedirect />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manager-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["manager"]}>
+                  <ManagerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/login" element={<Login />} />
+            <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
