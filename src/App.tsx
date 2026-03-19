@@ -157,6 +157,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/supervisor-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "supervisor"]}>
+                  <SupervisorDashboard />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

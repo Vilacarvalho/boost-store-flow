@@ -23,6 +23,7 @@ const adminNavItems = [
   { path: "/manual", icon: FileText, label: "Manual", roles: ["admin", "manager", "seller"] },
   { path: "/culture", icon: Heart, label: "Cultura", roles: ["admin", "manager", "seller"] },
   { path: "/onboarding", icon: Rocket, label: "Primeiros Passos", roles: ["admin", "manager", "seller"] },
+  { path: "/supervisor-dashboard", icon: ClipboardCheck, label: "Supervisor", roles: ["admin", "supervisor"] },
 ];
 
 interface AppLayoutProps {
