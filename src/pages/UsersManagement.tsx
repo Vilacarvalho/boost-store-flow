@@ -267,7 +267,7 @@ const UsersManagement = () => {
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Loja</TableHead>
-                    {myRole === "admin" && <TableHead className="w-16" />}
+                    {(myRole === "admin" || myRole === "super_admin") && <TableHead className="w-16" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
