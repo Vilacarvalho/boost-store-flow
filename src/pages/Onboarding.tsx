@@ -30,7 +30,8 @@ const allSteps: StepCard[] = [
 ];
 
 const roleGreetings: Record<string, string> = {
-  admin: "Você tem acesso completo ao sistema: lojas, usuários, metas e relatórios.",
+  super_admin: "Você tem acesso total ao sistema como Super Admin.",
+  admin: "Comece configurando suas lojas e equipe para começar a usar o sistema.",
   manager: "Acompanhe a performance da sua loja, metas da equipe e conteúdos.",
   seller: "Registre atendimentos, acompanhe suas metas e acesse materiais de apoio.",
 };
