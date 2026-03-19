@@ -468,8 +468,8 @@ const GoalPlanner = () => {
                             <TableCell className="text-right">
                               <CurrencyInput
                                 className="w-32 text-right"
-                                value={formatCurrency(r.appliedValue).replace("R$\u00a0", "")}
-                                onValueChange={(v) => updateAppliedValue(r.storeId, String(parseBRL(v)))}
+                                value={numberToBRLInput(r.appliedValue)}
+                                onValueChange={(v) => updateAppliedValue(r.storeId, v)}
                               />
                             </TableCell>
                             <TableCell>
