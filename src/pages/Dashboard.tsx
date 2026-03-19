@@ -358,6 +358,26 @@ const Dashboard = () => {
             </motion.div>
           )}
 
+          {/* Culture snippet */}
+          {culture?.mission && (
+            <motion.div
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.2 }}
+              className="bg-card rounded-2xl p-4 shadow-card cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => navigate("/culture")}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Heart className="h-4 w-4 text-rose-500" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Nossa Missão
+                </span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed line-clamp-2">
+                {culture.mission}
+              </p>
+            </motion.div>
+          )}
+
           {/* Empty state */}
           {(metrics?.total_attendances || 0) === 0 && (
             <motion.div
