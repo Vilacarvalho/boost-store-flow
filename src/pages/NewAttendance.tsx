@@ -117,7 +117,7 @@ const NewAttendance = () => {
     return true;
   };
 
-  const hasCustomerData = () => customerName.trim() && digitsOnly(customerPhone).length >= 10;
+  const hasValidPhone = () => digitsOnly(customerPhone).length >= 10;
 
   /* ── submit ──────────────────────────────────── */
 
