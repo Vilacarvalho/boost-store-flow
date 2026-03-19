@@ -47,7 +47,7 @@ const lossReasons = [
 
 const NewAttendance = () => {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
