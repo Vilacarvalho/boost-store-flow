@@ -902,6 +902,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_admin_manage_user: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
       get_daily_metrics: {
         Args: { _date?: string; _store_id: string }
         Returns: {
