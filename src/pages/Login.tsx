@@ -41,7 +41,7 @@ const Login = () => {
         toast({ title: "Conta criada!", description: "Fazendo login..." });
         // Auto-login after signup
         const { error: loginErr } = await signIn(email, password);
-        if (!loginErr) navigate("/dashboard");
+        if (!loginErr) navigate("/onboarding");
       }
     } else {
       const { error } = await signIn(email, password);
