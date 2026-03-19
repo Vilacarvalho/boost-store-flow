@@ -87,16 +87,37 @@ const UsersManagement = () => {
 
   const updateMutation = useMutation({
     mutationFn: async () => {
+      // Validate store_id requirement based on role
+      if ((form.role === "manager" || form.role === "seller") && !form.store_id) {
+        throw new Error("Gerente e Vendedor precisam ter uma loja atribuída.");
+      }
+
+      // Update profile
       const { error: profileErr } = await supabase.from("profiles").update({
         name: form.name,
-        store_id: form.store_id || null,
+        store_id: (form.role === "admin" || form.role === "supervisor") ? form.store_id || null : form.store_id,
       }).eq("id", form.id);
       if (profileErr) throw profileErr;
 
-      // Update role: delete old, insert new
-      await supabase.from("user_roles").delete().eq("user_id", form.id);
-      const { error: roleErr } = await supabase.from("user_roles").insert({ user_id: form.id, role: form.role as any });
-      if (roleErr) throw roleErr;
+      // Update role: try UPDATE first, fall back to INSERT
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", form.id)
+        .maybeSingle();
+
+      if (existingRole) {
+        const { error: roleErr } = await supabase
+          .from("user_roles")
+          .update({ role: form.role as any })
+          .eq("user_id", form.id);
+        if (roleErr) throw roleErr;
+      } else {
+        const { error: roleErr } = await supabase
+          .from("user_roles")
+          .insert({ user_id: form.id, role: form.role as any });
+        if (roleErr) throw roleErr;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
@@ -231,7 +252,12 @@ const UsersManagement = () => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button
               onClick={() => isCreating ? createMutation.mutate() : updateMutation.mutate()}
-              disabled={!form.name || (isCreating && (!form.email || !form.password)) || createMutation.isPending || updateMutation.isPending}
+              disabled={
+                !form.name ||
+                (isCreating && (!form.email || !form.password)) ||
+                ((form.role === "manager" || form.role === "seller") && !form.store_id) ||
+                createMutation.isPending || updateMutation.isPending
+              }
             >
               {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : "Salvar"}
             </Button>
