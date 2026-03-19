@@ -114,7 +114,7 @@ const Profile = () => {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Administração</p>
               <div className="space-y-1">
                 {adminItems
-                  .filter((item) => role === "admin" || item.label === "Metas da Rede")
+                  .filter((item) => role === "super_admin" || role === "admin" || item.label === "Metas da Rede")
                   .map((item, i) => (
                     <motion.button key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                       onClick={item.onClick}
