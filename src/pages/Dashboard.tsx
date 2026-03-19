@@ -79,7 +79,16 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile?.store_id || !user) return;
+    if (!user) return;
+    // Admin/super_admin without store: try to find first store in org
+    if (!profile?.store_id) {
+      setLoading(false);
+      setMetrics({
+        total_sales: 0, won_sales: 0, total_value: 0,
+        avg_ticket: 0, conversion_rate: 0, total_attendances: 0, avg_pa: 0,
+      });
+      return;
+    }
 
     const fetchData = async () => {
       setLoading(true);
