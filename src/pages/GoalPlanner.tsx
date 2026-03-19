@@ -8,7 +8,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { parseBRL, formatBRL } from "@/lib/currency";
+import { parseBRL, formatBRL, numberToBRLInput } from "@/lib/currency";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -182,7 +182,7 @@ const GoalPlanner = () => {
 
   const updateAppliedValue = (storeId: string, value: string) => {
     setResults((prev) =>
-      prev.map((r) => r.storeId === storeId ? { ...r, appliedValue: parseFloat(value) || 0 } : r)
+      prev.map((r) => r.storeId === storeId ? { ...r, appliedValue: parseBRL(value) } : r)
     );
   };
 
@@ -468,8 +468,8 @@ const GoalPlanner = () => {
                             <TableCell className="text-right">
                               <CurrencyInput
                                 className="w-32 text-right"
-                                value={formatCurrency(r.appliedValue).replace("R$\u00a0", "")}
-                                onValueChange={(v) => updateAppliedValue(r.storeId, String(parseBRL(v)))}
+                                value={numberToBRLInput(r.appliedValue)}
+                                onValueChange={(v) => updateAppliedValue(r.storeId, v)}
                               />
                             </TableCell>
                             <TableCell>
