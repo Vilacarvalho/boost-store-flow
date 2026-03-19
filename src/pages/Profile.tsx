@@ -15,6 +15,7 @@ import { useCulture } from "@/hooks/useCulture";
 const Profile = () => {
   const navigate = useNavigate();
   const { profile, role, signOut, user } = useAuth();
+  const { data: culture } = useCulture();
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editPassOpen, setEditPassOpen] = useState(false);
   const [name, setName] = useState(profile?.name || "");
