@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 type AppRole = "admin" | "manager" | "seller" | "supervisor";
 
@@ -23,6 +22,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,41 +36,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchProfileAndRole = async (userId: string) => {
     const [profileRes, roleRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).single(),
-      supabase.from("user_roles").select("role").eq("user_id", userId).single(),
+      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
     ]);
 
-    if (profileRes.data) {
-      setProfile(profileRes.data as UserProfile);
-    }
-    if (roleRes.data) {
-      setRole(roleRes.data.role as AppRole);
-    }
+    setProfile(profileRes.data ? (profileRes.data as UserProfile) : null);
+    setRole(roleRes.data ? (roleRes.data.role as AppRole) : null);
+  };
+
+  const refreshProfile = async () => {
+    if (!user?.id) return;
+    await fetchProfileAndRole(user.id);
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
 
-        if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock
-          setTimeout(() => fetchProfileAndRole(session.user.id), 0);
-        } else {
-          setProfile(null);
-          setRole(null);
-        }
-        setLoading(false);
+      if (session?.user) {
+        setTimeout(() => fetchProfileAndRole(session.user.id), 0);
+      } else {
+        setProfile(null);
+        setRole(null);
       }
-    );
+
+      setLoading(false);
+    });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+
       if (session?.user) {
         fetchProfileAndRole(session.user.id);
       }
+
       setLoading(false);
     });
 
@@ -91,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailRedirectTo: window.location.origin,
       },
     });
+
     return { error: error ? new Error(error.message) : null };
   };
 
@@ -102,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, role, loading, signIn, signUp, signOut }}
+      value={{ session, user, profile, role, loading, signIn, signUp, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
