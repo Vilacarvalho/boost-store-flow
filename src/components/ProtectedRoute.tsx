@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { getDashboardByRole } from "@/lib/roleRedirect";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -8,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { session, role, loading, profile } = useAuth();
+  const { session, role, loading } = useAuth();
 
   if (loading) {
     return (
@@ -22,13 +23,14 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user has no org/store setup yet, let them through (onboarding)
   // super_admin bypasses all role restrictions
   if (role === "super_admin") {
     return <>{children}</>;
   }
+
   if (allowedRoles && role && !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to correct dashboard instead of generic /dashboard
+    return <Navigate to={getDashboardByRole(role)} replace />;
   }
 
   return <>{children}</>;
