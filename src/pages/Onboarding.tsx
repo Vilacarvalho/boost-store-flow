@@ -17,16 +17,16 @@ interface StepCard {
 }
 
 const allSteps: StepCard[] = [
-  { icon: Plus, title: "Registrar Atendimento", description: "Registre cada atendimento de forma rápida com tipo de produto, resultado e faturamento.", path: "/new-attendance", roles: ["admin", "manager", "seller"] },
-  { icon: ShoppingBag, title: "Vendas do Dia", description: "Acompanhe todos os atendimentos registrados no dia pela equipe.", path: "/sales", roles: ["admin", "manager", "seller"] },
-  { icon: Target, title: "Metas", description: "Visualize suas metas diárias, semanais e mensais e o progresso atual.", path: "/goal-performance", roles: ["admin", "manager", "seller"] },
-  { icon: BarChart3, title: "Dashboard", description: "Veja o resumo de faturamento, conversão, ticket médio e P.A. da loja.", path: "/dashboard", roles: ["admin", "manager", "seller"] },
-  { icon: BookOpen, title: "Central de Conteúdo", description: "Acesse campanhas, comunicados e materiais de apoio.", path: "/content-center", roles: ["admin", "manager", "seller"] },
-  { icon: FileText, title: "Manual Operacional", description: "Consulte os processos e procedimentos internos da empresa.", path: "/manual", roles: ["admin", "manager", "seller"] },
-  { icon: Heart, title: "Cultura", description: "Conheça a missão, visão e valores da empresa.", path: "/culture", roles: ["admin", "manager", "seller"] },
-  { icon: Store, title: "Gestão de Lojas", description: "Cadastre e gerencie as lojas da rede.", path: "/stores", roles: ["admin"] },
-  { icon: Users, title: "Gestão de Usuários", description: "Adicione vendedores e gerentes e vincule às lojas.", path: "/users", roles: ["admin"] },
-  { icon: Calculator, title: "Planejador de Metas", description: "Crie planos de metas com base em histórico e crescimento desejado.", path: "/goal-planner", roles: ["admin"] },
+  { icon: Store, title: "Gestão de Lojas", description: "Cadastre e gerencie as lojas da rede.", path: "/stores", roles: ["admin", "super_admin"] },
+  { icon: Users, title: "Gestão de Usuários", description: "Adicione vendedores e gerentes e vincule às lojas.", path: "/users", roles: ["admin", "super_admin"] },
+  { icon: Plus, title: "Registrar Atendimento", description: "Registre cada atendimento de forma rápida com tipo de produto, resultado e faturamento.", path: "/new-attendance", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: ShoppingBag, title: "Vendas do Dia", description: "Acompanhe todos os atendimentos registrados no dia pela equipe.", path: "/sales", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: Target, title: "Metas", description: "Visualize suas metas diárias, semanais e mensais e o progresso atual.", path: "/goal-performance", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: BarChart3, title: "Dashboard", description: "Veja o resumo de faturamento, conversão, ticket médio e P.A. da loja.", path: "/dashboard", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: BookOpen, title: "Central de Conteúdo", description: "Acesse campanhas, comunicados e materiais de apoio.", path: "/content-center", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: FileText, title: "Manual Operacional", description: "Consulte os processos e procedimentos internos da empresa.", path: "/manual", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: Heart, title: "Cultura", description: "Conheça a missão, visão e valores da empresa.", path: "/culture", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: Calculator, title: "Planejador de Metas", description: "Crie planos de metas com base em histórico e crescimento desejado.", path: "/goal-planner", roles: ["admin", "super_admin"] },
 ];
 
 const roleGreetings: Record<string, string> = {
