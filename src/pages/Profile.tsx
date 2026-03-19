@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2 } from "lucide-react";
+import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2, Heart, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,10 +10,12 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCulture } from "@/hooks/useCulture";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { profile, role, signOut, user } = useAuth();
+  const { data: culture } = useCulture();
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editPassOpen, setEditPassOpen] = useState(false);
   const [name, setName] = useState(profile?.name || "");
@@ -122,6 +124,42 @@ const Profile = () => {
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </motion.button>
                   ))}
+              </div>
+            </div>
+          )}
+
+          {/* Culture section */}
+          {(culture?.mission || culture?.vision || culture?.values) && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Nossa Cultura</p>
+              <div className="bg-card rounded-2xl p-4 space-y-3">
+                {culture.mission && (
+                  <div className="flex items-start gap-2">
+                    <Target className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Missão</p>
+                      <p className="text-sm text-foreground leading-relaxed">{culture.mission}</p>
+                    </div>
+                  </div>
+                )}
+                {culture.vision && (
+                  <div className="flex items-start gap-2">
+                    <Eye className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Visão</p>
+                      <p className="text-sm text-foreground leading-relaxed">{culture.vision}</p>
+                    </div>
+                  </div>
+                )}
+                {culture.values && (
+                  <div className="flex items-start gap-2">
+                    <Heart className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Valores</p>
+                      <p className="text-sm text-foreground leading-relaxed">{culture.values}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

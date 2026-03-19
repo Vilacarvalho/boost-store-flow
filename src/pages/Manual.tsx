@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, GripVertical, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, GripVertical, BookOpen, Heart } from "lucide-react";
 import { toast } from "sonner";
+import { useCulture } from "@/hooks/useCulture";
 
 interface ManualSection {
   id: string;
@@ -22,8 +24,10 @@ interface ManualSection {
 
 const Manual = () => {
   const { profile, role } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isAdmin = role === "admin";
+  const { data: culture } = useCulture();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<ManualSection | null>(null);
@@ -132,6 +136,24 @@ const Manual = () => {
             </Button>
           )}
         </div>
+
+        {/* Culture banner */}
+        {(culture?.mission || culture?.vision || culture?.values) && (
+          <Card
+            className="p-4 flex items-start gap-3 cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => navigate("/culture")}
+          >
+            <div className="h-9 w-9 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
+              <Heart className="h-4 w-4 text-rose-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-medium text-sm text-foreground">Nossa Cultura</h3>
+              {culture?.mission && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{culture.mission}</p>
+              )}
+            </div>
+          </Card>
+        )}
 
         {isLoading ? (
           <div className="flex justify-center py-12">

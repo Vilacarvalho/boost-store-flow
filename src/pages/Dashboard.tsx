@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TrendingUp, Target, ShoppingCart, BarChart3, Trophy, AlertTriangle } from "lucide-react";
+import { TrendingUp, Target, ShoppingCart, BarChart3, Trophy, AlertTriangle, Heart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/currency";
+import { useCulture } from "@/hooks/useCulture";
 
 interface Metrics {
   total_sales: number;
@@ -68,6 +70,8 @@ const MetricCard = ({
 
 const Dashboard = () => {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
+  const { data: culture } = useCulture();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [lostSales, setLostSales] = useState<LostSale[]>([]);
@@ -351,6 +355,26 @@ const Dashboard = () => {
                   </div>
                 ))}
               </div>
+            </motion.div>
+          )}
+
+          {/* Culture snippet */}
+          {culture?.mission && (
+            <motion.div
+              {...fadeUp}
+              transition={{ ...fadeUp.transition, delay: 0.2 }}
+              className="bg-card rounded-2xl p-4 shadow-card cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => navigate("/culture")}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Heart className="h-4 w-4 text-rose-500" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Nossa Missão
+                </span>
+              </div>
+              <p className="text-sm text-foreground leading-relaxed line-clamp-2">
+                {culture.mission}
+              </p>
             </motion.div>
           )}
 
