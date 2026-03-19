@@ -13,7 +13,6 @@ export function getDashboardByRole(role: AppRole | null): string {
     case "seller":
       return "/dashboard";
     default:
-      // Don't fallback to seller — stay on a generic path until role loads
-      return "/dashboard";
+      return "/post-login";
   }
 }

@@ -50,34 +50,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    let isMounted = true;
 
-      if (session?.user) {
-        setTimeout(() => fetchProfileAndRole(session.user.id), 0);
-      } else {
+    const syncSession = async (nextSession: Session | null) => {
+      if (!isMounted) return;
+
+      setLoading(true);
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      try {
+        if (nextSession?.user) {
+          await fetchProfileAndRole(nextSession.user.id);
+        } else {
+          setProfile(null);
+          setRole(null);
+        }
+      } catch (error) {
+        console.error("Failed to load profile/role:", error);
         setProfile(null);
         setRole(null);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
+    };
 
-      setLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void syncSession(nextSession);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        fetchProfileAndRole(session.user.id);
-      }
-
-      setLoading(false);
+    void supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
+      void syncSession(nextSession);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
