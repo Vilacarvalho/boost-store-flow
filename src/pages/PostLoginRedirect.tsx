@@ -15,9 +15,11 @@ const PostLoginRedirect = () => {
       return;
     }
 
-    if (role) {
-      navigate(getDashboardByRole(role), { replace: true });
+    if (!role) {
+      return;
     }
+
+    navigate(getDashboardByRole(role), { replace: true });
   }, [role, loading, session, navigate]);
 
   return (

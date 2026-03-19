@@ -77,7 +77,7 @@ const Onboarding = () => {
         </div>
 
         <div className="text-center pt-2">
-          <Button size="lg" onClick={() => navigate("/dashboard")}>
+          <Button size="lg" onClick={() => navigate(getDashboardByRole(role))}>
             Começar
           </Button>
         </div>

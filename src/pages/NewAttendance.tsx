@@ -200,7 +200,7 @@ const NewAttendance = () => {
           : "Atendimento registrado.",
       });
 
-      navigate("/dashboard");
+      navigate(getDashboardByRole(role));
     } catch (err: any) {
       console.error(err);
       toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
@@ -220,7 +220,7 @@ const NewAttendance = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-sm font-semibold text-foreground flex-1">Novo Atendimento</h1>
-          <button onClick={() => navigate("/dashboard")} className="text-muted-foreground hover:text-foreground">
+          <button onClick={() => navigate(getDashboardByRole(role))} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
