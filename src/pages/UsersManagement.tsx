@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
-type AppRole = "admin" | "manager" | "seller" | "supervisor";
+type AppRole = "admin" | "manager" | "seller" | "supervisor" | "super_admin";
 
 interface StoreOption {
   id: string;
