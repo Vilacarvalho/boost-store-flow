@@ -47,6 +47,7 @@ interface UserFormState {
 }
 
 const roleLabels: Record<AppRole, string> = {
+  super_admin: "Super Admin",
   admin: "Admin",
   manager: "Gerente",
   seller: "Vendedor",
