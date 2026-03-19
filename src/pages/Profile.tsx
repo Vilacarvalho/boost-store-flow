@@ -164,7 +164,7 @@ const Profile = () => {
             </div>
           )}
 
-          {role === "admin" && (
+          {(role === "super_admin" || role === "admin") && (
             <Button variant="outline" size="lg" onClick={handleSeed} disabled={seeding}
               className="w-full justify-start gap-3 rounded-xl">
               <Building2 className="h-5 w-5" />
