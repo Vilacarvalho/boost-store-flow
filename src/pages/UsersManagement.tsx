@@ -252,7 +252,12 @@ const UsersManagement = () => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button
               onClick={() => isCreating ? createMutation.mutate() : updateMutation.mutate()}
-              disabled={!form.name || (isCreating && (!form.email || !form.password)) || createMutation.isPending || updateMutation.isPending}
+              disabled={
+                !form.name ||
+                (isCreating && (!form.email || !form.password)) ||
+                ((form.role === "manager" || form.role === "seller") && !form.store_id) ||
+                createMutation.isPending || updateMutation.isPending
+              }
             >
               {(createMutation.isPending || updateMutation.isPending) ? "Salvando..." : "Salvar"}
             </Button>
