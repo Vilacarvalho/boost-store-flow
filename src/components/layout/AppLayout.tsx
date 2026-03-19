@@ -101,7 +101,7 @@ const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
             Gestão de Performance
           </p>
         </div>
-        <nav className="flex-1 px-3 space-y-1">
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
