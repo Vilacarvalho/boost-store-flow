@@ -24,8 +24,10 @@ interface ManualSection {
 
 const Manual = () => {
   const { profile, role } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isAdmin = role === "admin";
+  const { data: culture } = useCulture();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<ManualSection | null>(null);
