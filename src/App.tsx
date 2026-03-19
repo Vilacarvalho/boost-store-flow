@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import SupervisorDashboard from "./pages/SupervisorDashboard.tsx";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -153,6 +154,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/supervisor-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "supervisor"]}>
+                  <SupervisorDashboard />
                 </ProtectedRoute>
               }
             />
