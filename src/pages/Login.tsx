@@ -53,7 +53,7 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        navigate("/dashboard");
+        navigate("/post-login");
       }
     }
   };
