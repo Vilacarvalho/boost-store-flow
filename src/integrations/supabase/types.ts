@@ -720,6 +720,51 @@ export type Database = {
           },
         ]
       }
+      store_visits: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          store_id: string
+          supervisor_id: string
+          visit_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          store_id: string
+          supervisor_id: string
+          visit_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          store_id?: string
+          supervisor_id?: string
+          visit_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_visits_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_visits_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           active: boolean
@@ -772,6 +817,85 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      visit_actions: {
+        Row: {
+          action: string
+          created_at: string
+          due_date: string | null
+          id: string
+          issue: string
+          responsible: string | null
+          status: string
+          visit_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          issue: string
+          responsible?: string | null
+          status?: string
+          visit_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          issue?: string
+          responsible?: string | null
+          status?: string
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_actions_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "store_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visit_checklists: {
+        Row: {
+          attempted_closing: boolean | null
+          campaign_active: boolean | null
+          follows_process: boolean | null
+          id: string
+          notes: string | null
+          system_usage: boolean | null
+          visit_id: string
+        }
+        Insert: {
+          attempted_closing?: boolean | null
+          campaign_active?: boolean | null
+          follows_process?: boolean | null
+          id?: string
+          notes?: string | null
+          system_usage?: boolean | null
+          visit_id: string
+        }
+        Update: {
+          attempted_closing?: boolean | null
+          campaign_active?: boolean | null
+          follows_process?: boolean | null
+          id?: string
+          notes?: string | null
+          system_usage?: boolean | null
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_checklists_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "store_visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
