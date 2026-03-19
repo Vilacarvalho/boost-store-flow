@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-type AppRole = 'admin' | 'manager' | 'seller' | 'supervisor'
+type AppRole = 'admin' | 'manager' | 'seller' | 'supervisor' | 'super_admin'
 
 const isValidRole = (value: unknown): value is AppRole =>
   value === 'admin' || value === 'manager' || value === 'seller' || value === 'supervisor'
