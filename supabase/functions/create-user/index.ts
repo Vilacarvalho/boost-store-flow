@@ -24,8 +24,11 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { data: isAdmin } = await supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'admin' })
-    if (!isAdmin) {
+    const [{ data: isAdmin }, { data: isSuperAdmin }] = await Promise.all([
+      supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'admin' }),
+      supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'super_admin' }),
+    ])
+    if (!isAdmin && !isSuperAdmin) {
       return new Response(JSON.stringify({ error: 'Apenas administradores podem criar usuários' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
