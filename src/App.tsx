@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import SupervisorDashboard from "./pages/SupervisorDashboard.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
+import ManagerDashboard from "./pages/ManagerDashboard.tsx";
+import PostLoginRedirect from "./pages/PostLoginRedirect.tsx";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
@@ -37,6 +40,31 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route
+              path="/post-login"
+              element={
+                <ProtectedRoute>
+                  <PostLoginRedirect />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manager-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["manager"]}>
+                  <ManagerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            
             <Route
               path="/dashboard"
               element={

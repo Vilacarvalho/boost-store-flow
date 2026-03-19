@@ -21,7 +21,7 @@ const Login = () => {
 
   // Redirect if already logged in
   if (session) {
-    navigate("/dashboard", { replace: true });
+    navigate("/post-login", { replace: true });
     return null;
   }
 
@@ -41,7 +41,7 @@ const Login = () => {
         toast({ title: "Conta criada!", description: "Fazendo login..." });
         // Auto-login after signup
         const { error: loginErr } = await signIn(email, password);
-        if (!loginErr) navigate("/onboarding");
+        if (!loginErr) navigate("/post-login");
       }
     } else {
       const { error } = await signIn(email, password);
@@ -53,7 +53,7 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
-        navigate("/dashboard");
+        navigate("/post-login");
       }
     }
   };
