@@ -359,6 +359,7 @@ const UsersManagement = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {myRole === "super_admin" && <SelectItem value="super_admin">Super Admin</SelectItem>}
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="manager">Gerente</SelectItem>
                   <SelectItem value="seller">Vendedor</SelectItem>
