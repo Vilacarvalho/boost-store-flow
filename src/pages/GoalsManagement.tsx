@@ -6,15 +6,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { parseBRL, formatBRL, numberToBRLInput } from "@/lib/currency";
 import { toast } from "sonner";
 
 const periodLabels: Record<string, string> = { daily: "Diário", weekly: "Semanal", monthly: "Mensal" };
+
+const NONE_VALUE = "__none__";
 
 const GoalsManagement = () => {
   const { profile, role } = useAuth();
@@ -58,19 +61,31 @@ const GoalsManagement = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const numericValue = parseBRL(form.target_value);
+      if (numericValue <= 0) throw new Error("Valor da meta deve ser maior que zero.");
+
       const payload = {
-        target_value: parseFloat(form.target_value),
+        target_value: numericValue,
         period_type: form.period_type as any,
         store_id: form.store_id || null,
-        user_id: form.user_id || null,
+        user_id: form.user_id && form.user_id !== NONE_VALUE ? form.user_id : null,
         organization_id: profile!.organization_id!,
       };
+
+      console.log("[GoalsManagement] Saving goal:", { isEdit: !!form.id, payload });
+
       if (form.id) {
         const { error } = await supabase.from("goals").update(payload).eq("id", form.id);
-        if (error) throw error;
+        if (error) {
+          console.error("[GoalsManagement] Update error:", error);
+          throw error;
+        }
       } else {
         const { error } = await supabase.from("goals").insert(payload);
-        if (error) throw error;
+        if (error) {
+          console.error("[GoalsManagement] Insert error:", error);
+          throw error;
+        }
       }
     },
     onSuccess: () => {
@@ -78,7 +93,10 @@ const GoalsManagement = () => {
       setDialogOpen(false);
       toast.success(form.id ? "Meta atualizada!" : "Meta criada!");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("[GoalsManagement] Mutation error:", e);
+      toast.error("Erro ao salvar meta: " + e.message);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -97,21 +115,22 @@ const GoalsManagement = () => {
   const userMap = new Map(users.map((u) => [u.id, u.name]));
 
   const openCreate = () => {
-    setForm({ id: "", target_value: "", period_type: "daily", store_id: stores[0]?.id || "", user_id: "" });
+    setForm({ id: "", target_value: "", period_type: "daily", store_id: stores[0]?.id || "", user_id: NONE_VALUE });
     setDialogOpen(true);
   };
 
   const openEdit = (g: any) => {
     setForm({
       id: g.id,
-      target_value: String(g.target_value),
+      target_value: numberToBRLInput(Number(g.target_value)),
       period_type: g.period_type,
       store_id: g.store_id || "",
-      user_id: g.user_id || "",
+      user_id: g.user_id || NONE_VALUE,
     });
     setDialogOpen(true);
   };
 
+  const filteredUsers = users.filter((u) => !form.store_id || u.store_id === form.store_id);
   const canEdit = role === "admin" || role === "manager";
 
   return (
@@ -156,10 +175,10 @@ const GoalsManagement = () => {
                       <TableCell>{g.store_id ? storeMap.get(g.store_id) || "—" : "Rede"}</TableCell>
                       <TableCell>{g.user_id ? userMap.get(g.user_id) || "—" : "Todos"}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {Number(g.target_value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {formatBRL(Number(g.target_value))}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {Number(g.current_value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                        {formatBRL(Number(g.current_value))}
                       </TableCell>
                       {canEdit && (
                         <TableCell className="flex gap-1 justify-end">
@@ -197,7 +216,11 @@ const GoalsManagement = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Valor da Meta (R$)</Label>
-              <Input type="number" value={form.target_value} onChange={(e) => setForm({ ...form, target_value: e.target.value })} placeholder="5000" />
+              <CurrencyInput
+                value={form.target_value}
+                onValueChange={(v) => setForm({ ...form, target_value: v })}
+                placeholder="Ex: 50.000,00"
+              />
             </div>
             <div className="space-y-2">
               <Label>Período</Label>
@@ -212,7 +235,7 @@ const GoalsManagement = () => {
             </div>
             <div className="space-y-2">
               <Label>Loja</Label>
-              <Select value={form.store_id} onValueChange={(v) => setForm({ ...form, store_id: v })}>
+              <Select value={form.store_id} onValueChange={(v) => setForm({ ...form, store_id: v, user_id: NONE_VALUE })}>
                 <SelectTrigger><SelectValue placeholder="Toda a rede" /></SelectTrigger>
                 <SelectContent>
                   {stores.map((s) => (
@@ -226,7 +249,8 @@ const GoalsManagement = () => {
               <Select value={form.user_id} onValueChange={(v) => setForm({ ...form, user_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                 <SelectContent>
-                  {users.filter((u) => !form.store_id || u.store_id === form.store_id).map((u) => (
+                  <SelectItem value={NONE_VALUE}>Todos (meta da loja)</SelectItem>
+                  {filteredUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                   ))}
                 </SelectContent>
