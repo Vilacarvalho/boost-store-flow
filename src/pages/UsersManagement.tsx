@@ -283,7 +283,7 @@ const UsersManagement = () => {
                       <TableCell className="text-sm">
                         {listedUser.store_id ? storeMap.get(listedUser.store_id) ?? "Loja inválida" : "—"}
                       </TableCell>
-                      {myRole === "admin" && (
+                      {(myRole === "admin" || myRole === "super_admin") && (
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => openEdit(listedUser)}>
                             <Pencil className="h-4 w-4" />
