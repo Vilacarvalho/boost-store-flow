@@ -247,7 +247,7 @@ const UsersManagement = () => {
               <Users className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold tracking-tight text-foreground">Usuários</h1>
             </div>
-            {myRole === "admin" && (
+            {(myRole === "admin" || myRole === "super_admin") && (
               <Button onClick={openCreate} size="sm">
                 <Plus className="mr-1 h-4 w-4" /> Novo Usuário
               </Button>
