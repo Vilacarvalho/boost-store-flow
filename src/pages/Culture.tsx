@@ -47,20 +47,19 @@ const Culture = () => {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!profile?.organization_id) throw new Error("Sem organização");
-      if (culture) {
-        const { error } = await supabase
-          .from("culture")
-          .update({ mission, vision, values, updated_at: new Date().toISOString() })
-          .eq("id", culture.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("culture").insert({
-          organization_id: profile.organization_id,
-          mission,
-          vision,
-          values,
-        });
-        if (error) throw error;
+      const payload = {
+        organization_id: profile.organization_id,
+        mission,
+        vision,
+        values,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase
+        .from("culture")
+        .upsert(payload, { onConflict: "organization_id" });
+      if (error) {
+        console.error("[Culture] Erro ao salvar:", error);
+        throw error;
       }
     },
     onSuccess: () => {
@@ -68,7 +67,10 @@ const Culture = () => {
       setEditing(false);
       toast.success("Cultura atualizada");
     },
-    onError: () => toast.error("Erro ao salvar"),
+    onError: (err: Error) => {
+      console.error("[Culture] Mutation error:", err);
+      toast.error("Erro ao salvar cultura. Verifique suas permissões.");
+    },
   });
 
   const items = [
