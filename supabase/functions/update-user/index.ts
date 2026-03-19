@@ -35,21 +35,20 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { data: isAdmin, error: adminCheckError } = await supabaseClient.rpc('has_role', {
-      _user_id: caller.id,
-      _role: 'admin',
-    })
+    // Check if caller is admin or super_admin
+    const [{ data: isAdmin }, { data: isSuperAdmin }] = await Promise.all([
+      supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'admin' }),
+      supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'super_admin' }),
+    ])
 
-    if (adminCheckError) {
-      throw adminCheckError
-    }
-
-    if (!isAdmin) {
+    if (!isAdmin && !isSuperAdmin) {
       return new Response(JSON.stringify({ error: 'Apenas administradores podem editar usuários' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    const callerIsSuperAdmin = !!isSuperAdmin
 
     const payload = await req.json()
     const userId = payload.user_id as string | undefined
