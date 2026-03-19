@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TrendingUp, Target, ShoppingCart, BarChart3, Trophy, AlertTriangle } from "lucide-react";
+import { TrendingUp, Target, ShoppingCart, BarChart3, Trophy, AlertTriangle, Heart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/currency";
+import { useCulture } from "@/hooks/useCulture";
 
 interface Metrics {
   total_sales: number;
