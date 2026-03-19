@@ -70,6 +70,8 @@ const MetricCard = ({
 
 const Dashboard = () => {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
+  const { data: culture } = useCulture();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [lostSales, setLostSales] = useState<LostSale[]>([]);
