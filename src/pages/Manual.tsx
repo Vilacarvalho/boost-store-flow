@@ -137,6 +137,24 @@ const Manual = () => {
           )}
         </div>
 
+        {/* Culture banner */}
+        {(culture?.mission || culture?.vision || culture?.values) && (
+          <Card
+            className="p-4 flex items-start gap-3 cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => navigate("/culture")}
+          >
+            <div className="h-9 w-9 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
+              <Heart className="h-4 w-4 text-rose-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-medium text-sm text-foreground">Nossa Cultura</h3>
+              {culture?.mission && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{culture.mission}</p>
+              )}
+            </div>
+          </Card>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-12">
             <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />

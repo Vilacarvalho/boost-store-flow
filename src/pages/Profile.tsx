@@ -128,6 +128,42 @@ const Profile = () => {
             </div>
           )}
 
+          {/* Culture section */}
+          {(culture?.mission || culture?.vision || culture?.values) && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Nossa Cultura</p>
+              <div className="bg-card rounded-2xl p-4 space-y-3">
+                {culture.mission && (
+                  <div className="flex items-start gap-2">
+                    <Target className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Missão</p>
+                      <p className="text-sm text-foreground leading-relaxed">{culture.mission}</p>
+                    </div>
+                  </div>
+                )}
+                {culture.vision && (
+                  <div className="flex items-start gap-2">
+                    <Eye className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Visão</p>
+                      <p className="text-sm text-foreground leading-relaxed">{culture.vision}</p>
+                    </div>
+                  </div>
+                )}
+                {culture.values && (
+                  <div className="flex items-start gap-2">
+                    <Heart className="h-4 w-4 text-rose-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Valores</p>
+                      <p className="text-sm text-foreground leading-relaxed">{culture.values}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {role === "admin" && (
             <Button variant="outline" size="lg" onClick={handleSeed} disabled={seeding}
               className="w-full justify-start gap-3 rounded-xl">
