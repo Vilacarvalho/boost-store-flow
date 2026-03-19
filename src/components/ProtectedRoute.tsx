@@ -23,6 +23,10 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   // If user has no org/store setup yet, let them through (onboarding)
+  // super_admin bypasses all role restrictions
+  if (role === "super_admin") {
+    return <>{children}</>;
+  }
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     return <Navigate to="/dashboard" replace />;
   }

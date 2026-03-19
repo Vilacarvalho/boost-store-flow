@@ -55,7 +55,7 @@ const roleLabels: Record<AppRole, string> = {
 };
 
 const isAppRole = (value: string | null | undefined): value is AppRole => {
-  return value === "admin" || value === "manager" || value === "seller" || value === "supervisor";
+  return value === "super_admin" || value === "admin" || value === "manager" || value === "seller" || value === "supervisor";
 };
 
 const roleNeedsStore = (role: AppRole) => role === "manager" || role === "seller";
