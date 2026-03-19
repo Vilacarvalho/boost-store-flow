@@ -123,12 +123,13 @@ const NewAttendance = () => {
 
   const handleAttemptSubmit = () => {
     if (!canSubmit()) return;
-    // If customer data partially filled or empty, and no matched customer, show prompt
-    if (!matchedCustomerId && !hasCustomerData() && (customerName.trim() || customerPhone.trim())) {
-      // partial data — just submit without customer
-      doSubmit(null);
-    } else if (!matchedCustomerId && !hasCustomerData()) {
-      setShowCustomerPrompt(true);
+    if (!matchedCustomerId && !hasValidPhone()) {
+      // No phone = no customer. Show prompt only if user typed something partial
+      if (customerName.trim() || customerPhone.trim()) {
+        setShowCustomerPrompt(true);
+      } else {
+        doSubmit(null);
+      }
     } else {
       doSubmit(matchedCustomerId);
     }
@@ -144,21 +145,34 @@ const NewAttendance = () => {
     try {
       let customerId = existingCustomerId;
 
-      // Auto-create customer if name + phone provided and no match
-      if (!customerId && hasCustomerData()) {
-        const { data: newCustomer, error: custErr } = await supabase
+      // Auto-create customer ONLY if valid phone and no matched customer
+      if (!customerId && hasValidPhone()) {
+        // Search again to avoid duplicates
+        const normalizedPhone = digitsOnly(customerPhone);
+        const { data: existing } = await supabase
           .from("customers")
-          .insert({
-            organization_id: profile.organization_id,
-            store_id: profile.store_id,
-            name: customerName.trim(),
-            whatsapp: digitsOnly(customerPhone),
-            status: "new",
-          })
           .select("id")
-          .single();
-        if (custErr) throw custErr;
-        customerId = newCustomer.id;
+          .eq("organization_id", profile.organization_id)
+          .eq("whatsapp", normalizedPhone)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          customerId = existing[0].id;
+        } else {
+          const { data: newCustomer, error: custErr } = await supabase
+            .from("customers")
+            .insert({
+              organization_id: profile.organization_id,
+              store_id: profile.store_id,
+              name: customerName.trim() || "Cliente " + normalizedPhone.slice(-4),
+              whatsapp: normalizedPhone,
+              status: "new",
+            })
+            .select("id")
+            .single();
+          if (custErr) throw custErr;
+          customerId = newCustomer.id;
+        }
       }
 
       const { error } = await supabase.from("sales").insert({
