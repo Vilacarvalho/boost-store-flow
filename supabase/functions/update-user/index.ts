@@ -8,7 +8,7 @@ const corsHeaders = {
 type AppRole = 'admin' | 'manager' | 'seller' | 'supervisor' | 'super_admin'
 
 const isValidRole = (value: unknown): value is AppRole =>
-  value === 'admin' || value === 'manager' || value === 'seller' || value === 'supervisor'
+  value === 'super_admin' || value === 'admin' || value === 'manager' || value === 'seller' || value === 'supervisor'
 
 const roleNeedsStore = (role: AppRole) => role === 'manager' || role === 'seller'
 
