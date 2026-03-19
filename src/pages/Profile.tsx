@@ -36,7 +36,7 @@ const Profile = () => {
     setSeeding(false);
   };
 
-  const roleLabels: Record<string, string> = { admin: "Administrador", manager: "Gerente", seller: "Vendedor" };
+  const roleLabels: Record<string, string> = { super_admin: "Super Admin", admin: "Administrador", manager: "Gerente", seller: "Vendedor", supervisor: "Supervisor" };
 
   const handleSignOut = async () => {
     await signOut();
@@ -109,12 +109,12 @@ const Profile = () => {
           </div>
 
           {/* Admin section - visible on all devices for admin/manager */}
-          {(role === "admin" || role === "manager") && (
+          {(role === "super_admin" || role === "admin" || role === "manager") && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Administração</p>
               <div className="space-y-1">
                 {adminItems
-                  .filter((item) => role === "admin" || item.label === "Metas da Rede")
+                  .filter((item) => role === "super_admin" || role === "admin" || item.label === "Metas da Rede")
                   .map((item, i) => (
                     <motion.button key={item.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                       onClick={item.onClick}
@@ -164,7 +164,7 @@ const Profile = () => {
             </div>
           )}
 
-          {role === "admin" && (
+          {(role === "super_admin" || role === "admin") && (
             <Button variant="outline" size="lg" onClick={handleSeed} disabled={seeding}
               className="w-full justify-start gap-3 rounded-xl">
               <Building2 className="h-5 w-5" />

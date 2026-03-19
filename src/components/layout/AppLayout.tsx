@@ -36,7 +36,7 @@ const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
   const navigate = useNavigate();
   const { role } = useAuth();
 
-  const visibleAdminItems = adminNavItems.filter((item) => role && item.roles.includes(role));
+  const visibleAdminItems = adminNavItems.filter((item) => role === "super_admin" || (role && item.roles.includes(role)));
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

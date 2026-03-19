@@ -5,10 +5,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-type AppRole = 'admin' | 'manager' | 'seller' | 'supervisor'
+type AppRole = 'admin' | 'manager' | 'seller' | 'supervisor' | 'super_admin'
 
 const isValidRole = (value: unknown): value is AppRole =>
-  value === 'admin' || value === 'manager' || value === 'seller' || value === 'supervisor'
+  value === 'super_admin' || value === 'admin' || value === 'manager' || value === 'seller' || value === 'supervisor'
 
 const roleNeedsStore = (role: AppRole) => role === 'manager' || role === 'seller'
 
@@ -35,21 +35,20 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { data: isAdmin, error: adminCheckError } = await supabaseClient.rpc('has_role', {
-      _user_id: caller.id,
-      _role: 'admin',
-    })
+    // Check if caller is admin or super_admin
+    const [{ data: isAdmin }, { data: isSuperAdmin }] = await Promise.all([
+      supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'admin' }),
+      supabaseClient.rpc('has_role', { _user_id: caller.id, _role: 'super_admin' }),
+    ])
 
-    if (adminCheckError) {
-      throw adminCheckError
-    }
-
-    if (!isAdmin) {
+    if (!isAdmin && !isSuperAdmin) {
       return new Response(JSON.stringify({ error: 'Apenas administradores podem editar usuários' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    const callerIsSuperAdmin = !!isSuperAdmin
 
     const payload = await req.json()
     const userId = payload.user_id as string | undefined
@@ -96,18 +95,38 @@ Deno.serve(async (req) => {
       throw targetProfileError
     }
 
-    if (!callerProfile?.organization_id || !targetProfile) {
+    if (!callerProfile?.organization_id && !callerIsSuperAdmin) {
       return new Response(JSON.stringify({ error: 'Usuário não encontrado para edição' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    if (callerProfile.organization_id !== targetProfile.organization_id) {
+    if (!targetProfile) {
+      return new Response(JSON.stringify({ error: 'Usuário alvo não encontrado' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // super_admin can edit any user; admin can only edit same org
+    if (!callerIsSuperAdmin && callerProfile?.organization_id !== targetProfile.organization_id) {
       return new Response(JSON.stringify({ error: 'Você só pode editar usuários da sua organização' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // Handle password reset by super_admin
+    const newPassword = typeof payload.password === 'string' && payload.password.trim() ? payload.password.trim() : null
+    if (newPassword) {
+      if (!callerIsSuperAdmin) {
+        return new Response(JSON.stringify({ error: 'Apenas super_admin pode redefinir senhas' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      await adminClient.auth.admin.updateUserById(userId, { password: newPassword })
     }
 
     const normalizedStoreId = roleNeedsStore(role) ? storeId : null

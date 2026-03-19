@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
-type AppRole = "admin" | "manager" | "seller" | "supervisor";
+type AppRole = "admin" | "manager" | "seller" | "supervisor" | "super_admin";
 
 interface StoreOption {
   id: string;
@@ -47,6 +47,7 @@ interface UserFormState {
 }
 
 const roleLabels: Record<AppRole, string> = {
+  super_admin: "Super Admin",
   admin: "Admin",
   manager: "Gerente",
   seller: "Vendedor",
@@ -54,7 +55,7 @@ const roleLabels: Record<AppRole, string> = {
 };
 
 const isAppRole = (value: string | null | undefined): value is AppRole => {
-  return value === "admin" || value === "manager" || value === "seller" || value === "supervisor";
+  return value === "super_admin" || value === "admin" || value === "manager" || value === "seller" || value === "supervisor";
 };
 
 const roleNeedsStore = (role: AppRole) => role === "manager" || role === "seller";
@@ -246,7 +247,7 @@ const UsersManagement = () => {
               <Users className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold tracking-tight text-foreground">Usuários</h1>
             </div>
-            {myRole === "admin" && (
+            {(myRole === "admin" || myRole === "super_admin") && (
               <Button onClick={openCreate} size="sm">
                 <Plus className="mr-1 h-4 w-4" /> Novo Usuário
               </Button>
@@ -266,7 +267,7 @@ const UsersManagement = () => {
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Loja</TableHead>
-                    {myRole === "admin" && <TableHead className="w-16" />}
+                    {(myRole === "admin" || myRole === "super_admin") && <TableHead className="w-16" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -282,7 +283,7 @@ const UsersManagement = () => {
                       <TableCell className="text-sm">
                         {listedUser.store_id ? storeMap.get(listedUser.store_id) ?? "Loja inválida" : "—"}
                       </TableCell>
-                      {myRole === "admin" && (
+                      {(myRole === "admin" || myRole === "super_admin") && (
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => openEdit(listedUser)}>
                             <Pencil className="h-4 w-4" />
@@ -358,6 +359,7 @@ const UsersManagement = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {myRole === "super_admin" && <SelectItem value="super_admin">Super Admin</SelectItem>}
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="manager">Gerente</SelectItem>
                   <SelectItem value="seller">Vendedor</SelectItem>
