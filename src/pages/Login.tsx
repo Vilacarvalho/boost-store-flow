@@ -21,7 +21,7 @@ const Login = () => {
 
   // Redirect if already logged in
   if (session) {
-    navigate("/dashboard", { replace: true });
+    navigate("/post-login", { replace: true });
     return null;
   }
 
