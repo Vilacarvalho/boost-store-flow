@@ -42,7 +42,7 @@ const quickLinks = [
 ];
 
 const AdminDashboard = () => {
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const navigate = useNavigate();
   const [stores, setStores] = useState<StoreData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,20 +50,28 @@ const AdminDashboard = () => {
   const [networkCurrent, setNetworkCurrent] = useState(0);
 
   useEffect(() => {
-    if (!profile?.organization_id) {
+    // super_admin may have null org — still load all accessible stores
+    if (!profile) {
       setLoading(false);
       return;
     }
     loadData();
-  }, [profile?.organization_id]);
+  }, [profile?.organization_id, role]);
 
   const loadData = async () => {
     try {
-      const { data: storeList } = await supabase
+      // Build store query — super_admin sees all, admin sees own org
+      let query = supabase
         .from("stores")
         .select("id, name")
-        .eq("organization_id", profile!.organization_id!)
         .eq("active", true);
+
+      if (profile?.organization_id) {
+        query = query.eq("organization_id", profile.organization_id);
+      }
+      // If no org (super_admin), RLS returns all stores
+
+      const { data: storeList } = await query;
 
       if (!storeList || storeList.length === 0) {
         setLoading(false);
