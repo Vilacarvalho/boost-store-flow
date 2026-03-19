@@ -95,18 +95,38 @@ Deno.serve(async (req) => {
       throw targetProfileError
     }
 
-    if (!callerProfile?.organization_id || !targetProfile) {
+    if (!callerProfile?.organization_id && !callerIsSuperAdmin) {
       return new Response(JSON.stringify({ error: 'Usuário não encontrado para edição' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    if (callerProfile.organization_id !== targetProfile.organization_id) {
+    if (!targetProfile) {
+      return new Response(JSON.stringify({ error: 'Usuário alvo não encontrado' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // super_admin can edit any user; admin can only edit same org
+    if (!callerIsSuperAdmin && callerProfile?.organization_id !== targetProfile.organization_id) {
       return new Response(JSON.stringify({ error: 'Você só pode editar usuários da sua organização' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // Handle password reset by super_admin
+    const newPassword = typeof payload.password === 'string' && payload.password.trim() ? payload.password.trim() : null
+    if (newPassword) {
+      if (!callerIsSuperAdmin) {
+        return new Response(JSON.stringify({ error: 'Apenas super_admin pode redefinir senhas' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      await adminClient.auth.admin.updateUserById(userId, { password: newPassword })
     }
 
     const normalizedStoreId = roleNeedsStore(role) ? storeId : null
