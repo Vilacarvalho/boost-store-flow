@@ -109,7 +109,7 @@ const Profile = () => {
           </div>
 
           {/* Admin section - visible on all devices for admin/manager */}
-          {(role === "admin" || role === "manager") && (
+          {(role === "super_admin" || role === "admin" || role === "manager") && (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Administração</p>
               <div className="space-y-1">
