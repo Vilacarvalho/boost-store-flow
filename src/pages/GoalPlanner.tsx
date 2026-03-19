@@ -182,7 +182,7 @@ const GoalPlanner = () => {
 
   const updateAppliedValue = (storeId: string, value: string) => {
     setResults((prev) =>
-      prev.map((r) => r.storeId === storeId ? { ...r, appliedValue: parseFloat(value) || 0 } : r)
+      prev.map((r) => r.storeId === storeId ? { ...r, appliedValue: parseBRL(value) } : r)
     );
   };
 
