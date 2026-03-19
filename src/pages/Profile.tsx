@@ -36,7 +36,7 @@ const Profile = () => {
     setSeeding(false);
   };
 
-  const roleLabels: Record<string, string> = { admin: "Administrador", manager: "Gerente", seller: "Vendedor" };
+  const roleLabels: Record<string, string> = { super_admin: "Super Admin", admin: "Administrador", manager: "Gerente", seller: "Vendedor", supervisor: "Supervisor" };
 
   const handleSignOut = async () => {
     await signOut();
