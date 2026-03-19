@@ -1,9 +1,8 @@
-type AppRole = "admin" | "manager" | "seller" | "supervisor" | "super_admin";
+export type AppRole = "admin" | "manager" | "seller" | "supervisor" | "super_admin";
 
 export function getDashboardByRole(role: AppRole | null): string {
   switch (role) {
     case "super_admin":
-      return "/admin-dashboard";
     case "admin":
       return "/admin-dashboard";
     case "supervisor":
@@ -15,4 +14,8 @@ export function getDashboardByRole(role: AppRole | null): string {
     default:
       return "/post-login";
   }
+}
+
+export function canSell(role: AppRole | null): boolean {
+  return role === "seller" || role === "manager";
 }

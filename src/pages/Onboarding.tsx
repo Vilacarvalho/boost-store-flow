@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getDashboardByRole } from "@/lib/roleRedirect";
+import { AppRole, getDashboardByRole } from "@/lib/roleRedirect";
 import AppLayout from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Plus, Target, BarChart3, BookOpen, FileText, Heart,
-  Store, Users, Calculator, ShoppingBag, Rocket,
+  Store, Users, Calculator, ShoppingBag, Rocket, ClipboardCheck,
 } from "lucide-react";
 
 interface StepCard {
@@ -14,34 +14,48 @@ interface StepCard {
   title: string;
   description: string;
   path: string;
-  roles: string[];
+  roles: AppRole[];
 }
 
 const allSteps: StepCard[] = [
+  { icon: BarChart3, title: "Painel da Rede", description: "Acompanhe os resultados consolidados da rede.", path: "/admin-dashboard", roles: ["admin", "super_admin"] },
   { icon: Store, title: "Gestão de Lojas", description: "Cadastre e gerencie as lojas da rede.", path: "/stores", roles: ["admin", "super_admin"] },
   { icon: Users, title: "Gestão de Usuários", description: "Adicione vendedores e gerentes e vincule às lojas.", path: "/users", roles: ["admin", "super_admin"] },
-  { icon: Plus, title: "Registrar Atendimento", description: "Registre cada atendimento de forma rápida com tipo de produto, resultado e faturamento.", path: "/new-attendance", roles: ["admin", "manager", "seller", "super_admin"] },
-  { icon: ShoppingBag, title: "Vendas do Dia", description: "Acompanhe todos os atendimentos registrados no dia pela equipe.", path: "/sales", roles: ["admin", "manager", "seller", "super_admin"] },
-  { icon: Target, title: "Metas", description: "Visualize suas metas diárias, semanais e mensais e o progresso atual.", path: "/goal-performance", roles: ["admin", "manager", "seller", "super_admin"] },
-  { icon: BarChart3, title: "Dashboard", description: "Veja o resumo de faturamento, conversão, ticket médio e P.A. da loja.", path: "/dashboard", roles: ["admin", "manager", "seller", "super_admin"] },
-  { icon: BookOpen, title: "Central de Conteúdo", description: "Acesse campanhas, comunicados e materiais de apoio.", path: "/content-center", roles: ["admin", "manager", "seller", "super_admin"] },
-  { icon: FileText, title: "Manual Operacional", description: "Consulte os processos e procedimentos internos da empresa.", path: "/manual", roles: ["admin", "manager", "seller", "super_admin"] },
-  { icon: Heart, title: "Cultura", description: "Conheça a missão, visão e valores da empresa.", path: "/culture", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: Target, title: "Metas", description: "Acompanhe metas da rede e da operação.", path: "/goals", roles: ["admin", "manager", "super_admin"] },
   { icon: Calculator, title: "Planejador de Metas", description: "Crie planos de metas com base em histórico e crescimento desejado.", path: "/goal-planner", roles: ["admin", "super_admin"] },
+  { icon: ClipboardCheck, title: "Painel de Supervisão", description: "Gerencie visitas, diagnósticos e acompanhamento de lojas.", path: "/supervisor-dashboard", roles: ["supervisor"] },
+  { icon: BarChart3, title: "Painel da Loja", description: "Veja indicadores consolidados da sua loja.", path: "/manager-dashboard", roles: ["manager"] },
+  { icon: BarChart3, title: "Meu Painel", description: "Acompanhe sua performance comercial diária.", path: "/dashboard", roles: ["seller"] },
+  { icon: Plus, title: "Registrar Atendimento", description: "Registre atendimentos com tipo de produto, resultado e faturamento.", path: "/new-attendance", roles: ["manager", "seller"] },
+  { icon: ShoppingBag, title: "Vendas do Dia", description: "Acompanhe os atendimentos registrados pela operação.", path: "/sales", roles: ["manager", "seller"] },
+  { icon: BookOpen, title: "Central de Conteúdo", description: "Acesse campanhas, comunicados e materiais de apoio.", path: "/content-center", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: FileText, title: "Manual Operacional", description: "Consulte processos e procedimentos internos.", path: "/manual", roles: ["admin", "manager", "seller", "super_admin"] },
+  { icon: Heart, title: "Cultura", description: "Conheça a missão, visão e valores da empresa.", path: "/culture", roles: ["admin", "manager", "seller", "super_admin"] },
 ];
 
-const roleGreetings: Record<string, string> = {
-  super_admin: "Você tem acesso total ao sistema como Super Admin.",
-  admin: "Comece configurando suas lojas e equipe para começar a usar o sistema.",
-  manager: "Acompanhe a performance da sua loja, metas da equipe e conteúdos.",
+const roleGreetings: Record<AppRole, string> = {
+  super_admin: "Você tem acesso global ao ambiente administrativo.",
+  admin: "Acompanhe a rede e gerencie lojas, pessoas e metas.",
+  supervisor: "Acompanhe visitas, diagnósticos e evolução das lojas.",
+  manager: "Gerencie a performance da loja e acompanhe a operação.",
   seller: "Registre atendimentos, acompanhe suas metas e acesse materiais de apoio.",
 };
 
 const Onboarding = () => {
-  const { role, profile } = useAuth();
+  const { role, profile, loading } = useAuth();
   const navigate = useNavigate();
-  const userRole = role ?? "seller";
-  const steps = allSteps.filter((s) => s.roles.includes(userRole));
+
+  if (loading || !role) {
+    return (
+      <AppLayout showFab={false}>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const steps = allSteps.filter((step) => step.roles.includes(role));
 
   return (
     <AppLayout showFab={false}>
@@ -54,7 +68,7 @@ const Onboarding = () => {
             Bem-vindo{profile?.name ? `, ${profile.name.split(" ")[0]}` : ""}!
           </h1>
           <p className="text-muted-foreground max-w-md mx-auto">
-            {roleGreetings[userRole]}
+            {roleGreetings[role]}
           </p>
         </div>
 
