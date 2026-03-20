@@ -52,7 +52,7 @@ export default function ContentForm({ stores, categories }: ContentFormProps) {
     is_required: false,
     start_date: new Date().toISOString().split("T")[0],
     end_date: "",
-    roles: ["admin", "manager", "seller"] as ("admin" | "manager" | "seller")[],
+    roles: ["super_admin", "admin", "supervisor", "manager", "seller"] as ("admin" | "manager" | "seller" | "supervisor" | "super_admin")[],
   });
 
   function resetForm() {
