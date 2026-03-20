@@ -300,10 +300,39 @@ const NewAttendance = () => {
                 <Input
                   placeholder="Nome do cliente"
                   value={customerName}
-                  onChange={(e) => { setCustomerName(e.target.value); if (autoFilled) setAutoFilled(false); }}
+                  onChange={(e) => handleNameChange(e.target.value)}
                   className="pl-9 rounded-xl bg-secondary/50 border-0"
                 />
               </div>
+
+              {/* Name-based suggestions */}
+              {nameSuggestions.length > 0 && !matchedCustomerId && (
+                <div className="rounded-xl border border-border bg-card p-2 space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+                    Clientes semelhantes encontrados
+                  </p>
+                  {nameSuggestions.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => selectSuggestion(s)}
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors text-left"
+                    >
+                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                        {s.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{s.name}</p>
+                        {s.whatsapp && (
+                          <p className="text-[10px] text-muted-foreground">{formatPhoneBR(s.whatsapp)}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-primary font-medium shrink-0">Usar</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -316,7 +345,39 @@ const NewAttendance = () => {
                 />
               </div>
               {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-              {matchedCustomerId && (
+
+              {/* Rich duplicate match info */}
+              {matchedCustomerId && matchedCustomerInfo && (
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1">
+                  <p className="text-xs font-medium text-primary">✓ Cliente encontrado no CRM</p>
+                  <p className="text-xs text-foreground font-medium">{matchedCustomerInfo.name}</p>
+                  {matchedCustomerInfo.whatsapp && (
+                    <p className="text-[10px] text-muted-foreground">Tel: {formatPhoneBR(matchedCustomerInfo.whatsapp)}</p>
+                  )}
+                  {matchedCustomerInfo.store_name && (
+                    <p className="text-[10px] text-muted-foreground">Loja: {matchedCustomerInfo.store_name}</p>
+                  )}
+                  {matchedCustomerInfo.last_sale_date && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Último atendimento: {new Date(matchedCustomerInfo.last_sale_date).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMatchedCustomerId(null);
+                      setMatchedCustomerInfo(null);
+                      setCustomerName("");
+                      setCustomerPhone("");
+                      setAutoFilled(false);
+                    }}
+                    className="text-[10px] text-muted-foreground underline mt-1"
+                  >
+                    Limpar e cadastrar novo
+                  </button>
+                </div>
+              )}
+              {matchedCustomerId && !matchedCustomerInfo && (
                 <p className="text-xs text-primary font-medium">✓ Cliente encontrado no CRM</p>
               )}
             </div>
