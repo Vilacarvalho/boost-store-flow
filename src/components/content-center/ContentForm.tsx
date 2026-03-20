@@ -20,8 +20,10 @@ const CONTENT_TYPES = [
   { value: "link", label: "Link externo", icon: LinkIcon },
 ];
 
-const ROLES: { value: "admin" | "manager" | "seller"; label: string }[] = [
+const ROLES: { value: "admin" | "manager" | "seller" | "supervisor" | "super_admin"; label: string }[] = [
+  { value: "super_admin", label: "Super Admin" },
   { value: "admin", label: "Admin" },
+  { value: "supervisor", label: "Supervisor" },
   { value: "manager", label: "Gerente" },
   { value: "seller", label: "Vendedor" },
 ];
