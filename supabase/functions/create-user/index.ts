@@ -44,16 +44,36 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Validate name: at least 2 words, each with 2+ chars, no numbers
+    const nameWords = name.trim().replace(/\s+/g, ' ').split(' ').filter((w: string) => w.length >= 2)
+    if (nameWords.length < 2 || /[^a-zA-ZÀ-ÿ\s'-]/.test(name.trim())) {
+      return new Response(JSON.stringify({ error: 'Digite nome e sobrenome válidos' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Validate email format
+    const emailNorm = email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailNorm)) {
+      return new Response(JSON.stringify({ error: 'Digite um e-mail válido' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Normalize name: capitalize each word
+    const normalizedName = name.trim().replace(/\s+/g, ' ').split(' ')
+      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-      email,
+      email: emailNorm,
       password,
       email_confirm: true,
-      user_metadata: { name }
+      user_metadata: { name: normalizedName }
     })
 
     if (createError) {
