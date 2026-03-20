@@ -72,7 +72,7 @@ const Profile = () => {
     : "?";
 
   const menuItems = [
-    { label: "Editar Nome", icon: User, onClick: () => { setName(profile?.name || ""); setEditNameOpen(true); } },
+    { label: "Editar Nome", icon: User, onClick: () => { setName(profile?.name || ""); setNameError(""); setEditNameOpen(true); } },
     { label: "Alterar Senha", icon: KeyRound, onClick: () => { setPassword(""); setEditPassOpen(true); } },
     { label: "Minhas Metas", icon: Target, onClick: () => navigate("/goals") },
     { label: "Notificações", icon: Bell },
