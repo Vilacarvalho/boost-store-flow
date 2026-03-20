@@ -18,17 +18,7 @@ import { getDashboardByRole } from "@/lib/roleRedirect";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { parseBRL, formatBRL } from "@/lib/currency";
-
-/* ── helpers ─────────────────────────────────────── */
-
-const formatPhone = (v: string) => {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  if (d.length <= 2) return d;
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-};
-
-const digitsOnly = (v: string) => v.replace(/\D/g, "");
+import { formatPhoneBR, normalizePhone, validatePhoneOptional, normalizeName } from "@/lib/validation";
 
 /* ── constants ───────────────────────────────────── */
 
@@ -68,12 +58,13 @@ const NewAttendance = () => {
   const [totalValue, setTotalValue] = useState("");
 
   // Smart prompt
+  const [phoneError, setPhoneError] = useState("");
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
 
   /* ── phone autocomplete ──────────────────────── */
 
   const searchCustomerByPhone = useCallback(async (phone: string) => {
-    const digits = digitsOnly(phone);
+    const digits = normalizePhone(phone);
     if (digits.length < 10 || !profile?.organization_id) return;
 
     const { data } = await supabase
@@ -94,11 +85,17 @@ const NewAttendance = () => {
   }, [profile?.organization_id, autoFilled]);
 
   const handlePhoneChange = (raw: string) => {
-    const formatted = formatPhone(raw);
+    const formatted = formatPhoneBR(raw);
     setCustomerPhone(formatted);
     setMatchedCustomerId(null);
+    setPhoneError("");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchCustomerByPhone(formatted), 400);
+  };
+
+  const handlePhoneBlur = () => {
+    const err = validatePhoneOptional(customerPhone);
+    if (err) setPhoneError(err);
   };
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
@@ -118,7 +115,7 @@ const NewAttendance = () => {
     return true;
   };
 
-  const hasValidPhone = () => digitsOnly(customerPhone).length >= 10;
+  const hasValidPhone = () => normalizePhone(customerPhone).length >= 10;
 
   /* ── submit ──────────────────────────────────── */
 
@@ -148,8 +145,7 @@ const NewAttendance = () => {
 
       // Auto-create customer ONLY if valid phone and no matched customer
       if (!customerId && hasValidPhone()) {
-        // Search again to avoid duplicates
-        const normalizedPhone = digitsOnly(customerPhone);
+        const normalizedPhone = normalizePhone(customerPhone);
         const { data: existing } = await supabase
           .from("customers")
           .select("id")
@@ -165,7 +161,7 @@ const NewAttendance = () => {
             .insert({
               organization_id: profile.organization_id,
               store_id: profile.store_id,
-              name: customerName.trim() || "Cliente " + normalizedPhone.slice(-4),
+              name: customerName.trim() ? normalizeName(customerName) : "Cliente " + normalizedPhone.slice(-4),
               whatsapp: normalizedPhone,
               status: "new",
             })
@@ -252,10 +248,12 @@ const NewAttendance = () => {
                   placeholder="(00) 00000-0000"
                   value={customerPhone}
                   onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={handlePhoneBlur}
                   inputMode="tel"
                   className="pl-9 rounded-xl bg-secondary/50 border-0"
                 />
               </div>
+              {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
               {matchedCustomerId && (
                 <p className="text-xs text-primary font-medium">✓ Cliente encontrado no CRM</p>
               )}

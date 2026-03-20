@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCulture } from "@/hooks/useCulture";
+import { validateName, normalizeName } from "@/lib/validation";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const Profile = () => {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [nameError, setNameError] = useState("");
 
   const handleSeed = async () => {
     setSeeding(true);
@@ -44,8 +46,10 @@ const Profile = () => {
   };
 
   const handleSaveName = async () => {
+    const err = validateName(name);
+    if (err) { setNameError(err); return; }
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ name }).eq("id", user!.id);
+    const { error } = await supabase.from("profiles").update({ name: normalizeName(name) }).eq("id", user!.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Nome atualizado!");
@@ -68,7 +72,7 @@ const Profile = () => {
     : "?";
 
   const menuItems = [
-    { label: "Editar Nome", icon: User, onClick: () => { setName(profile?.name || ""); setEditNameOpen(true); } },
+    { label: "Editar Nome", icon: User, onClick: () => { setName(profile?.name || ""); setNameError(""); setEditNameOpen(true); } },
     { label: "Alterar Senha", icon: KeyRound, onClick: () => { setPassword(""); setEditPassOpen(true); } },
     { label: "Minhas Metas", icon: Target, onClick: () => navigate("/goals") },
     { label: "Notificações", icon: Bell },
@@ -186,7 +190,12 @@ const Profile = () => {
           <DialogHeader><DialogTitle>Editar Nome</DialogTitle></DialogHeader>
           <div className="space-y-2">
             <Label>Nome</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              value={name}
+              onChange={(e) => { setName(e.target.value); setNameError(""); }}
+              onBlur={() => { const err = validateName(name); if (err) setNameError(err); }}
+            />
+            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditNameOpen(false)}>Cancelar</Button>

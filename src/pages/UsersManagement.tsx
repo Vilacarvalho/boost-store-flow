@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Pencil, Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { validateName, validateEmail, normalizeName, normalizeEmail } from "@/lib/validation";
 import AppLayout from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -90,20 +91,28 @@ const UsersManagement = () => {
   const validStoreIds = useMemo(() => new Set(stores.map((store) => store.id)), [stores]);
   const shouldShowStoreField = roleNeedsStore(form.role);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const validateForm = () => {
-    if (!form.name.trim()) return "Informe o nome do usuário.";
+    const errors: Record<string, string> = {};
+
+    const nameErr = validateName(form.name);
+    if (nameErr) errors.name = nameErr;
 
     if (isCreating) {
-      if (!form.email.trim()) return "Informe um e-mail válido.";
-      if (!form.password) return "Informe uma senha para o novo usuário.";
+      const emailErr = validateEmail(form.email);
+      if (emailErr) errors.email = emailErr;
+      if (!form.password || form.password.length < 6) errors.password = "Senha deve ter no mínimo 6 caracteres";
     }
 
     if (roleNeedsStore(form.role)) {
-      if (!form.store_id) return "Gerente e vendedor precisam de uma loja válida.";
-      if (!validStoreIds.has(form.store_id)) return "Selecione uma loja válida antes de salvar.";
+      if (!form.store_id) errors.store_id = "Gerente e vendedor precisam de uma loja válida.";
+      else if (!validStoreIds.has(form.store_id)) errors.store_id = "Selecione uma loja válida antes de salvar.";
     }
 
-    return null;
+    setFieldErrors(errors);
+    const firstError = Object.values(errors)[0];
+    return firstError || null;
   };
 
   const { data: users = [], isLoading } = useQuery({
@@ -148,9 +157,9 @@ const UsersManagement = () => {
 
       const response = await supabase.functions.invoke("create-user", {
         body: {
-          email: form.email.trim(),
+          email: normalizeEmail(form.email),
           password: form.password,
-          name: form.name.trim(),
+          name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
         },
@@ -176,7 +185,7 @@ const UsersManagement = () => {
       const response = await supabase.functions.invoke("update-user", {
         body: {
           user_id: form.id,
-          name: form.name.trim(),
+          name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
         },
@@ -318,7 +327,18 @@ const UsersManagement = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Nome</Label>
-              <Input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+              <Input
+                value={form.name}
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, name: event.target.value }));
+                  if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: "" }));
+                }}
+                onBlur={() => {
+                  const err = validateName(form.name);
+                  if (err) setFieldErrors((prev) => ({ ...prev, name: err }));
+                }}
+              />
+              {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
             </div>
 
             {isCreating && (
@@ -328,16 +348,29 @@ const UsersManagement = () => {
                   <Input
                     type="email"
                     value={form.email}
-                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, email: event.target.value }));
+                      if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
+                    }}
+                    onBlur={() => {
+                      const err = validateEmail(form.email);
+                      if (err) setFieldErrors((prev) => ({ ...prev, email: err }));
+                    }}
                   />
+                  {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Senha</Label>
                   <Input
                     type="password"
                     value={form.password}
-                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, password: event.target.value }));
+                      if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
+                    }}
+                    placeholder="Mínimo 6 caracteres"
                   />
+                  {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
                 </div>
               </>
             )}
