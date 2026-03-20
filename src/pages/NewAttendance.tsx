@@ -65,7 +65,7 @@ const NewAttendance = () => {
 
   const searchCustomerByPhone = useCallback(async (phone: string) => {
     const digits = normalizePhone(phone);
-    if (digits.length < 10 || !profile?.organization_id) return;
+    if (digits.length < 12 || !profile?.organization_id) return;
 
     const { data } = await supabase
       .from("customers")
@@ -115,7 +115,7 @@ const NewAttendance = () => {
     return true;
   };
 
-  const hasValidPhone = () => normalizePhone(customerPhone).length >= 10;
+  const hasValidPhone = () => normalizePhone(customerPhone).length >= 12;
 
   /* ── submit ──────────────────────────────────── */
 

@@ -6,6 +6,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/currency";
+import { phoneToWhatsApp } from "@/lib/validation";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary",
@@ -159,7 +160,7 @@ const CRM = () => {
                     </div>
                     <div className="flex items-center gap-1">
                       {client.whatsapp && (
-                        <a href={`https://wa.me/55${client.whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
+                        <a href={`https://wa.me/${phoneToWhatsApp(client.whatsapp)}`} target="_blank" rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center hover:bg-success/20 transition-colors">
                           <MessageCircle className="h-4 w-4 text-success" />
