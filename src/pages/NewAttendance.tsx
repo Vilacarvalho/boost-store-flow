@@ -58,6 +58,7 @@ const NewAttendance = () => {
   const [totalValue, setTotalValue] = useState("");
 
   // Smart prompt
+  const [phoneError, setPhoneError] = useState("");
   const [showCustomerPrompt, setShowCustomerPrompt] = useState(false);
 
   /* ── phone autocomplete ──────────────────────── */
