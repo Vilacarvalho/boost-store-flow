@@ -45,8 +45,17 @@ const NewAttendance = () => {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
+  const [matchedCustomerInfo, setMatchedCustomerInfo] = useState<{
+    name: string; whatsapp: string | null; store_name?: string; last_sale_date?: string;
+  } | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Name-based suggestions
+  const [nameSuggestions, setNameSuggestions] = useState<Array<{
+    id: string; name: string; whatsapp: string | null;
+  }>>([]);
 
   // Attendance fields
   const [productType, setProductType] = useState("");
@@ -69,28 +78,78 @@ const NewAttendance = () => {
 
     const { data } = await supabase
       .from("customers")
-      .select("id, name, whatsapp")
+      .select("id, name, whatsapp, store_id")
       .eq("organization_id", profile.organization_id)
       .eq("whatsapp", digits)
       .limit(1);
 
     if (data && data.length > 0) {
-      setMatchedCustomerId(data[0].id);
-      setCustomerName(data[0].name);
+      const match = data[0];
+      setMatchedCustomerId(match.id);
+      setCustomerName(match.name);
       setAutoFilled(true);
+      setNameSuggestions([]);
+
+      // Fetch extra info: store name & last sale
+      const [storeRes, saleRes] = await Promise.all([
+        match.store_id
+          ? supabase.from("stores").select("name").eq("id", match.store_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from("sales").select("created_at").eq("customer_id", match.id)
+          .order("created_at", { ascending: false }).limit(1),
+      ]);
+
+      setMatchedCustomerInfo({
+        name: match.name,
+        whatsapp: match.whatsapp,
+        store_name: storeRes.data?.name ?? undefined,
+        last_sale_date: saleRes.data?.[0]?.created_at ?? undefined,
+      });
     } else {
       setMatchedCustomerId(null);
+      setMatchedCustomerInfo(null);
       if (autoFilled) { setCustomerName(""); setAutoFilled(false); }
     }
   }, [profile?.organization_id, autoFilled]);
+
+  const searchCustomerByName = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed.length < 3 || !profile?.organization_id || matchedCustomerId) return;
+
+    const { data } = await supabase
+      .from("customers")
+      .select("id, name, whatsapp")
+      .eq("organization_id", profile.organization_id)
+      .ilike("name", `%${trimmed}%`)
+      .limit(5);
+
+    setNameSuggestions(data || []);
+  }, [profile?.organization_id, matchedCustomerId]);
 
   const handlePhoneChange = (raw: string) => {
     const formatted = formatPhoneBR(raw);
     setCustomerPhone(formatted);
     setMatchedCustomerId(null);
+    setMatchedCustomerInfo(null);
     setPhoneError("");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchCustomerByPhone(formatted), 400);
+  };
+
+  const handleNameChange = (value: string) => {
+    setCustomerName(value);
+    if (autoFilled) setAutoFilled(false);
+    setNameSuggestions([]);
+    clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(() => searchCustomerByName(value), 400);
+  };
+
+  const selectSuggestion = (s: { id: string; name: string; whatsapp: string | null }) => {
+    setMatchedCustomerId(s.id);
+    setCustomerName(s.name);
+    if (s.whatsapp) setCustomerPhone(formatPhoneBR(s.whatsapp));
+    setAutoFilled(true);
+    setNameSuggestions([]);
   };
 
   const handlePhoneBlur = () => {
@@ -98,7 +157,10 @@ const NewAttendance = () => {
     if (err) setPhoneError(err);
   };
 
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(debounceRef.current);
+    clearTimeout(nameDebounceRef.current);
+  }, []);
 
   /* ── validation ──────────────────────────────── */
 
@@ -238,10 +300,39 @@ const NewAttendance = () => {
                 <Input
                   placeholder="Nome do cliente"
                   value={customerName}
-                  onChange={(e) => { setCustomerName(e.target.value); if (autoFilled) setAutoFilled(false); }}
+                  onChange={(e) => handleNameChange(e.target.value)}
                   className="pl-9 rounded-xl bg-secondary/50 border-0"
                 />
               </div>
+
+              {/* Name-based suggestions */}
+              {nameSuggestions.length > 0 && !matchedCustomerId && (
+                <div className="rounded-xl border border-border bg-card p-2 space-y-1">
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1">
+                    Clientes semelhantes encontrados
+                  </p>
+                  {nameSuggestions.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => selectSuggestion(s)}
+                      className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-secondary/50 transition-colors text-left"
+                    >
+                      <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                        {s.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{s.name}</p>
+                        {s.whatsapp && (
+                          <p className="text-[10px] text-muted-foreground">{formatPhoneBR(s.whatsapp)}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-primary font-medium shrink-0">Usar</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -254,7 +345,39 @@ const NewAttendance = () => {
                 />
               </div>
               {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-              {matchedCustomerId && (
+
+              {/* Rich duplicate match info */}
+              {matchedCustomerId && matchedCustomerInfo && (
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 space-y-1">
+                  <p className="text-xs font-medium text-primary">✓ Cliente encontrado no CRM</p>
+                  <p className="text-xs text-foreground font-medium">{matchedCustomerInfo.name}</p>
+                  {matchedCustomerInfo.whatsapp && (
+                    <p className="text-[10px] text-muted-foreground">Tel: {formatPhoneBR(matchedCustomerInfo.whatsapp)}</p>
+                  )}
+                  {matchedCustomerInfo.store_name && (
+                    <p className="text-[10px] text-muted-foreground">Loja: {matchedCustomerInfo.store_name}</p>
+                  )}
+                  {matchedCustomerInfo.last_sale_date && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Último atendimento: {new Date(matchedCustomerInfo.last_sale_date).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMatchedCustomerId(null);
+                      setMatchedCustomerInfo(null);
+                      setCustomerName("");
+                      setCustomerPhone("");
+                      setAutoFilled(false);
+                    }}
+                    className="text-[10px] text-muted-foreground underline mt-1"
+                  >
+                    Limpar e cadastrar novo
+                  </button>
+                </div>
+              )}
+              {matchedCustomerId && !matchedCustomerInfo && (
                 <p className="text-xs text-primary font-medium">✓ Cliente encontrado no CRM</p>
               )}
             </div>
