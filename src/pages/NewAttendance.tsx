@@ -145,8 +145,7 @@ const NewAttendance = () => {
 
       // Auto-create customer ONLY if valid phone and no matched customer
       if (!customerId && hasValidPhone()) {
-        // Search again to avoid duplicates
-        const normalizedPhone = digitsOnly(customerPhone);
+        const normalizedPhone = normalizePhone(customerPhone);
         const { data: existing } = await supabase
           .from("customers")
           .select("id")
@@ -162,7 +161,7 @@ const NewAttendance = () => {
             .insert({
               organization_id: profile.organization_id,
               store_id: profile.store_id,
-              name: customerName.trim() || "Cliente " + normalizedPhone.slice(-4),
+              name: customerName.trim() ? normalizeName(customerName) : "Cliente " + normalizedPhone.slice(-4),
               whatsapp: normalizedPhone,
               status: "new",
             })
