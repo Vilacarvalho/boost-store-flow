@@ -348,8 +348,16 @@ const UsersManagement = () => {
                   <Input
                     type="email"
                     value={form.email}
-                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, email: event.target.value }));
+                      if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
+                    }}
+                    onBlur={() => {
+                      const err = validateEmail(form.email);
+                      if (err) setFieldErrors((prev) => ({ ...prev, email: err }));
+                    }}
                   />
+                  {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label>Senha</Label>
