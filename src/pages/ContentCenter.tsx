@@ -26,7 +26,7 @@ const CONTENT_TYPES = [
 
 const ContentCenter = () => {
   const { profile, role, user } = useAuth();
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "super_admin";
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -34,7 +34,6 @@ const ContentCenter = () => {
   const [storeFilter, setStoreFilter] = useState("all");
   const [extraFilter, setExtraFilter] = useState("all");
 
-  // Fetch stores
   const { data: stores } = useQuery({
     queryKey: ["stores"],
     queryFn: async () => {
@@ -43,16 +42,38 @@ const ContentCenter = () => {
     },
   });
 
-  // Fetch custom categories
   const { data: customCategories } = useCategories();
 
+  // Categories visible to current role: active ones whose allowed_roles includes current role (or all for admin)
+  const visibleCategories = useMemo(() => {
+    if (!customCategories) return [];
+    return customCategories.filter((c) => {
+      if (isAdmin) return true; // admin/super_admin see all for management
+      return c.is_active && (c.allowed_roles ?? []).includes(role ?? "");
+    });
+  }, [customCategories, role, isAdmin]);
+
   const allCategories = useMemo(() => {
-    const custom = (customCategories ?? []).filter((c) => c.is_active).map((c) => c.name);
+    const custom = visibleCategories.map((c) => c.name);
     const merged = [...new Set([...DEFAULT_CATEGORIES, ...custom])];
     return merged.sort();
+  }, [visibleCategories]);
+
+  // Build a set of inactive category names for filtering content
+  const inactiveCategoryNames = useMemo(() => {
+    if (!customCategories) return new Set<string>();
+    return new Set(customCategories.filter(c => !c.is_active).map(c => c.name));
   }, [customCategories]);
 
-  // Fetch contents
+  // Build a map of category name → allowed_roles
+  const categoryRolesMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    (customCategories ?? []).forEach(c => {
+      map[c.name] = c.allowed_roles;
+    });
+    return map;
+  }, [customCategories]);
+
   const { data: contents, isLoading } = useQuery({
     queryKey: ["contents"],
     queryFn: async () => {
@@ -67,7 +88,6 @@ const ContentCenter = () => {
     },
   });
 
-  // Fetch views
   const { data: views } = useQuery({
     queryKey: ["content_views"],
     queryFn: async () => {
@@ -77,7 +97,6 @@ const ContentCenter = () => {
     },
   });
 
-  // View counts per content
   const viewCounts = useMemo(() => {
     const map: Record<string, number> = {};
     (views ?? []).forEach((v: any) => {
@@ -86,7 +105,6 @@ const ContentCenter = () => {
     return map;
   }, [views]);
 
-  // Set of content IDs viewed by current user
   const myViewed = useMemo(() => {
     const set = new Set<string>();
     (views ?? []).forEach((v: any) => {
@@ -95,13 +113,11 @@ const ContentCenter = () => {
     return set;
   }, [views, user]);
 
-  // Admin stats
   const adminStats = useMemo(() => {
     if (!contents) return { totalActive: 0, totalRequired: 0, expiringSoon: 0, totalViews: 0 };
     const now = new Date();
     const soon = new Date();
     soon.setDate(soon.getDate() + 7);
-
     return {
       totalActive: contents.length,
       totalRequired: contents.filter((c: any) => c.is_required).length,
@@ -114,10 +130,19 @@ const ContentCenter = () => {
     };
   }, [contents, views]);
 
-  // Filter contents
+  // Filter contents with category governance
   const filtered = useMemo(() => {
     if (!contents) return [];
     return contents.filter((c: any) => {
+      // Category governance: hide content in inactive categories for non-admins
+      if (!isAdmin && inactiveCategoryNames.has(c.category)) return false;
+
+      // Category role governance: if category has allowed_roles, check user role
+      if (!isAdmin && categoryRolesMap[c.category]) {
+        const catRoles = categoryRolesMap[c.category];
+        if (!catRoles.includes(role ?? "")) return false;
+      }
+
       if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
       if (typeFilter !== "all" && c.content_type !== typeFilter) return false;
@@ -135,13 +160,12 @@ const ContentCenter = () => {
       }
       return true;
     });
-  }, [contents, search, categoryFilter, typeFilter, storeFilter, extraFilter, myViewed]);
+  }, [contents, search, categoryFilter, typeFilter, storeFilter, extraFilter, myViewed, isAdmin, inactiveCategoryNames, categoryRolesMap, role]);
 
   return (
     <AppLayout showFab={false}>
       <div className="md:ml-64">
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -160,7 +184,6 @@ const ContentCenter = () => {
             )}
           </div>
 
-          {/* Admin Stats */}
           {isAdmin && (
             <AdminStats
               totalActive={adminStats.totalActive}
@@ -170,7 +193,6 @@ const ContentCenter = () => {
             />
           )}
 
-          {/* Filters */}
           <Card>
             <CardContent className="pt-4 pb-4">
               <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
@@ -215,7 +237,6 @@ const ContentCenter = () => {
             </CardContent>
           </Card>
 
-          {/* Content grid */}
           {isLoading ? (
             <div className="flex justify-center py-12">
               <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
