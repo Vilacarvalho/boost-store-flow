@@ -157,7 +157,10 @@ const NewAttendance = () => {
     if (err) setPhoneError(err);
   };
 
-  useEffect(() => () => clearTimeout(debounceRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(debounceRef.current);
+    clearTimeout(nameDebounceRef.current);
+  }, []);
 
   /* ── validation ──────────────────────────────── */
 
