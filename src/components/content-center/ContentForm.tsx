@@ -20,8 +20,10 @@ const CONTENT_TYPES = [
   { value: "link", label: "Link externo", icon: LinkIcon },
 ];
 
-const ROLES: { value: "admin" | "manager" | "seller"; label: string }[] = [
+const ROLES: { value: "admin" | "manager" | "seller" | "supervisor" | "super_admin"; label: string }[] = [
+  { value: "super_admin", label: "Super Admin" },
   { value: "admin", label: "Admin" },
+  { value: "supervisor", label: "Supervisor" },
   { value: "manager", label: "Gerente" },
   { value: "seller", label: "Vendedor" },
 ];
@@ -50,7 +52,7 @@ export default function ContentForm({ stores, categories }: ContentFormProps) {
     is_required: false,
     start_date: new Date().toISOString().split("T")[0],
     end_date: "",
-    roles: ["admin", "manager", "seller"] as ("admin" | "manager" | "seller")[],
+    roles: ["super_admin", "admin", "supervisor", "manager", "seller"] as ("admin" | "manager" | "seller" | "supervisor" | "super_admin")[],
   });
 
   function resetForm() {
@@ -58,7 +60,7 @@ export default function ContentForm({ stores, categories }: ContentFormProps) {
       title: "", description: "", category: categories[0] || "Comunicados", content_type: "link",
       external_url: "", store_id: "", is_featured: false, is_pinned: false, is_required: false,
       start_date: new Date().toISOString().split("T")[0], end_date: "",
-      roles: ["admin", "manager", "seller"],
+      roles: ["super_admin", "admin", "supervisor", "manager", "seller"],
     });
     setFile(null);
   }

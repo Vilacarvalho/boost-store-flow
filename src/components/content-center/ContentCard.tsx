@@ -86,6 +86,9 @@ export default function ContentCard({ content: c, storeName, isAdmin, viewCount,
               {isPinned && <Badge variant="outline" className="text-[10px]">Fixado</Badge>}
               {storeName && <Badge variant="outline" className="text-[10px]">{storeName}</Badge>}
               {c.end_date && <Badge variant="outline" className="text-[10px]">até {new Date(c.end_date).toLocaleDateString("pt-BR")}</Badge>}
+              {isAdmin && c.content_access && (c.content_access as any[]).map((a: any) => (
+                <Badge key={a.role} variant="outline" className="text-[10px] bg-muted/50">{a.role}</Badge>
+              ))}
               {isAdmin && viewCount !== undefined && (
                 <Badge variant="outline" className="text-[10px] gap-1">
                   <Eye className="h-3 w-3" /> {viewCount}
