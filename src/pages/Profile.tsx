@@ -46,8 +46,10 @@ const Profile = () => {
   };
 
   const handleSaveName = async () => {
+    const err = validateName(name);
+    if (err) { setNameError(err); return; }
     setSaving(true);
-    const { error } = await supabase.from("profiles").update({ name }).eq("id", user!.id);
+    const { error } = await supabase.from("profiles").update({ name: normalizeName(name) }).eq("id", user!.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Nome atualizado!");
