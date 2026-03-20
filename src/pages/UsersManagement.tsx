@@ -364,8 +364,13 @@ const UsersManagement = () => {
                   <Input
                     type="password"
                     value={form.password}
-                    onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                    onChange={(event) => {
+                      setForm((current) => ({ ...current, password: event.target.value }));
+                      if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
+                    }}
+                    placeholder="Mínimo 6 caracteres"
                   />
+                  {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
                 </div>
               </>
             )}
