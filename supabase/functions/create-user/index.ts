@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     await adminClient.from('profiles').update({
       organization_id: orgId,
       store_id: store_id || null,
-      name
+      name: normalizedName
     }).eq('id', newUser.user.id)
 
     await adminClient.from('user_roles').insert({

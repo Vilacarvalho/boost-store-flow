@@ -50,18 +50,30 @@ Deno.serve(async (req) => {
 
     const callerIsSuperAdmin = !!isSuperAdmin
 
-    const payload = await req.json()
     const userId = payload.user_id as string | undefined
-    const name = typeof payload.name === 'string' ? payload.name.trim() : ''
+    const rawName = typeof payload.name === 'string' ? payload.name.trim().replace(/\s+/g, ' ') : ''
     const role = payload.role as AppRole
     const storeId = typeof payload.store_id === 'string' && payload.store_id.trim() ? payload.store_id.trim() : null
 
-    if (!userId || !name || !isValidRole(role)) {
+    if (!userId || !rawName || !isValidRole(role)) {
       return new Response(JSON.stringify({ error: 'Dados inválidos para atualização do usuário' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    // Validate name: at least 2 words with 2+ chars, no numbers
+    const nameWords = rawName.split(' ').filter((w: string) => w.length >= 2)
+    if (nameWords.length < 2 || /[^a-zA-ZÀ-ÿ\s'-]/.test(rawName)) {
+      return new Response(JSON.stringify({ error: 'Digite nome e sobrenome válidos' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Normalize name
+    const name = rawName.split(' ')
+      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
 
     if (roleNeedsStore(role) && !storeId) {
       return new Response(JSON.stringify({ error: 'Gerente e vendedor precisam ter uma loja válida' }), {
