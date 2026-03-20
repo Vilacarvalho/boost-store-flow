@@ -64,7 +64,7 @@ const NewAttendance = () => {
   /* ── phone autocomplete ──────────────────────── */
 
   const searchCustomerByPhone = useCallback(async (phone: string) => {
-    const digits = digitsOnly(phone);
+    const digits = normalizePhone(phone);
     if (digits.length < 10 || !profile?.organization_id) return;
 
     const { data } = await supabase
@@ -85,11 +85,17 @@ const NewAttendance = () => {
   }, [profile?.organization_id, autoFilled]);
 
   const handlePhoneChange = (raw: string) => {
-    const formatted = formatPhone(raw);
+    const formatted = formatPhoneBR(raw);
     setCustomerPhone(formatted);
     setMatchedCustomerId(null);
+    setPhoneError("");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchCustomerByPhone(formatted), 400);
+  };
+
+  const handlePhoneBlur = () => {
+    const err = validatePhoneOptional(customerPhone);
+    if (err) setPhoneError(err);
   };
 
   useEffect(() => () => clearTimeout(debounceRef.current), []);
