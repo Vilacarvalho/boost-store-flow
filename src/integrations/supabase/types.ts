@@ -69,21 +69,27 @@ export type Database = {
       }
       content_categories: {
         Row: {
+          allowed_roles: string[] | null
           created_at: string
+          description: string | null
           id: string
           is_active: boolean
           name: string
           organization_id: string
         }
         Insert: {
+          allowed_roles?: string[] | null
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
           name: string
           organization_id: string
         }
         Update: {
+          allowed_roles?: string[] | null
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
           name?: string
