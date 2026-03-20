@@ -6,6 +6,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/currency";
+import { phoneToWhatsApp } from "@/lib/validation";
 
 const statusColors: Record<string, string> = {
   new: "bg-primary/10 text-primary",
