@@ -91,20 +91,28 @@ const UsersManagement = () => {
   const validStoreIds = useMemo(() => new Set(stores.map((store) => store.id)), [stores]);
   const shouldShowStoreField = roleNeedsStore(form.role);
 
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
   const validateForm = () => {
-    if (!form.name.trim()) return "Informe o nome do usuário.";
+    const errors: Record<string, string> = {};
+
+    const nameErr = validateName(form.name);
+    if (nameErr) errors.name = nameErr;
 
     if (isCreating) {
-      if (!form.email.trim()) return "Informe um e-mail válido.";
-      if (!form.password) return "Informe uma senha para o novo usuário.";
+      const emailErr = validateEmail(form.email);
+      if (emailErr) errors.email = emailErr;
+      if (!form.password || form.password.length < 6) errors.password = "Senha deve ter no mínimo 6 caracteres";
     }
 
     if (roleNeedsStore(form.role)) {
-      if (!form.store_id) return "Gerente e vendedor precisam de uma loja válida.";
-      if (!validStoreIds.has(form.store_id)) return "Selecione uma loja válida antes de salvar.";
+      if (!form.store_id) errors.store_id = "Gerente e vendedor precisam de uma loja válida.";
+      else if (!validStoreIds.has(form.store_id)) errors.store_id = "Selecione uma loja válida antes de salvar.";
     }
 
-    return null;
+    setFieldErrors(errors);
+    const firstError = Object.values(errors)[0];
+    return firstError || null;
   };
 
   const { data: users = [], isLoading } = useQuery({
