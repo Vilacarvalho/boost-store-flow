@@ -185,7 +185,7 @@ const UsersManagement = () => {
       const response = await supabase.functions.invoke("update-user", {
         body: {
           user_id: form.id,
-          name: form.name.trim(),
+          name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
         },
