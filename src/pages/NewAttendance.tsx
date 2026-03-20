@@ -78,28 +78,78 @@ const NewAttendance = () => {
 
     const { data } = await supabase
       .from("customers")
-      .select("id, name, whatsapp")
+      .select("id, name, whatsapp, store_id")
       .eq("organization_id", profile.organization_id)
       .eq("whatsapp", digits)
       .limit(1);
 
     if (data && data.length > 0) {
-      setMatchedCustomerId(data[0].id);
-      setCustomerName(data[0].name);
+      const match = data[0];
+      setMatchedCustomerId(match.id);
+      setCustomerName(match.name);
       setAutoFilled(true);
+      setNameSuggestions([]);
+
+      // Fetch extra info: store name & last sale
+      const [storeRes, saleRes] = await Promise.all([
+        match.store_id
+          ? supabase.from("stores").select("name").eq("id", match.store_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from("sales").select("created_at").eq("customer_id", match.id)
+          .order("created_at", { ascending: false }).limit(1),
+      ]);
+
+      setMatchedCustomerInfo({
+        name: match.name,
+        whatsapp: match.whatsapp,
+        store_name: storeRes.data?.name ?? undefined,
+        last_sale_date: saleRes.data?.[0]?.created_at ?? undefined,
+      });
     } else {
       setMatchedCustomerId(null);
+      setMatchedCustomerInfo(null);
       if (autoFilled) { setCustomerName(""); setAutoFilled(false); }
     }
   }, [profile?.organization_id, autoFilled]);
+
+  const searchCustomerByName = useCallback(async (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed.length < 3 || !profile?.organization_id || matchedCustomerId) return;
+
+    const { data } = await supabase
+      .from("customers")
+      .select("id, name, whatsapp")
+      .eq("organization_id", profile.organization_id)
+      .ilike("name", `%${trimmed}%`)
+      .limit(5);
+
+    setNameSuggestions(data || []);
+  }, [profile?.organization_id, matchedCustomerId]);
 
   const handlePhoneChange = (raw: string) => {
     const formatted = formatPhoneBR(raw);
     setCustomerPhone(formatted);
     setMatchedCustomerId(null);
+    setMatchedCustomerInfo(null);
     setPhoneError("");
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchCustomerByPhone(formatted), 400);
+  };
+
+  const handleNameChange = (value: string) => {
+    setCustomerName(value);
+    if (autoFilled) setAutoFilled(false);
+    setNameSuggestions([]);
+    clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(() => searchCustomerByName(value), 400);
+  };
+
+  const selectSuggestion = (s: { id: string; name: string; whatsapp: string | null }) => {
+    setMatchedCustomerId(s.id);
+    setCustomerName(s.name);
+    if (s.whatsapp) setCustomerPhone(formatPhoneBR(s.whatsapp));
+    setAutoFilled(true);
+    setNameSuggestions([]);
   };
 
   const handlePhoneBlur = () => {
