@@ -45,8 +45,17 @@ const NewAttendance = () => {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
+  const [matchedCustomerInfo, setMatchedCustomerInfo] = useState<{
+    name: string; whatsapp: string | null; store_name?: string; last_sale_date?: string;
+  } | null>(null);
   const [autoFilled, setAutoFilled] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Name-based suggestions
+  const [nameSuggestions, setNameSuggestions] = useState<Array<{
+    id: string; name: string; whatsapp: string | null;
+  }>>([]);
 
   // Attendance fields
   const [productType, setProductType] = useState("");
