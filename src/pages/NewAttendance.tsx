@@ -18,17 +18,7 @@ import { getDashboardByRole } from "@/lib/roleRedirect";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { parseBRL, formatBRL } from "@/lib/currency";
-
-/* ── helpers ─────────────────────────────────────── */
-
-const formatPhone = (v: string) => {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  if (d.length <= 2) return d;
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-};
-
-const digitsOnly = (v: string) => v.replace(/\D/g, "");
+import { formatPhoneBR, normalizePhone, validatePhoneOptional, normalizeName } from "@/lib/validation";
 
 /* ── constants ───────────────────────────────────── */
 
