@@ -60,7 +60,7 @@ export default function ContentForm({ stores, categories }: ContentFormProps) {
       title: "", description: "", category: categories[0] || "Comunicados", content_type: "link",
       external_url: "", store_id: "", is_featured: false, is_pinned: false, is_required: false,
       start_date: new Date().toISOString().split("T")[0], end_date: "",
-      roles: ["admin", "manager", "seller"],
+      roles: ["super_admin", "admin", "supervisor", "manager", "seller"],
     });
     setFile(null);
   }
