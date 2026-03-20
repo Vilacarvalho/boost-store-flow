@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Pencil, Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { validateName, validateEmail, normalizeName, normalizeEmail } from "@/lib/validation";
 import AppLayout from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
