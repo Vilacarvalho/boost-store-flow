@@ -115,7 +115,7 @@ const NewAttendance = () => {
     return true;
   };
 
-  const hasValidPhone = () => normalizePhone(customerPhone).length >= 10;
+  const hasValidPhone = () => normalizePhone(customerPhone).length >= 12;
 
   /* ── submit ──────────────────────────────────── */
 
