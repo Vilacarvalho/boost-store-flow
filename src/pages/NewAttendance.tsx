@@ -248,10 +248,12 @@ const NewAttendance = () => {
                   placeholder="(00) 00000-0000"
                   value={customerPhone}
                   onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={handlePhoneBlur}
                   inputMode="tel"
                   className="pl-9 rounded-xl bg-secondary/50 border-0"
                 />
               </div>
+              {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
               {matchedCustomerId && (
                 <p className="text-xs text-primary font-medium">✓ Cliente encontrado no CRM</p>
               )}

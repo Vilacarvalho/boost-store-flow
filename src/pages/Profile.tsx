@@ -190,7 +190,12 @@ const Profile = () => {
           <DialogHeader><DialogTitle>Editar Nome</DialogTitle></DialogHeader>
           <div className="space-y-2">
             <Label>Nome</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              value={name}
+              onChange={(e) => { setName(e.target.value); setNameError(""); }}
+              onBlur={() => { const err = validateName(name); if (err) setNameError(err); }}
+            />
+            {nameError && <p className="text-xs text-destructive">{nameError}</p>}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditNameOpen(false)}>Cancelar</Button>
