@@ -23,6 +23,7 @@ const Profile = () => {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [nameError, setNameError] = useState("");
 
   const handleSeed = async () => {
     setSeeding(true);
