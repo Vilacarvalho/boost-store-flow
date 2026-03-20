@@ -157,9 +157,9 @@ const UsersManagement = () => {
 
       const response = await supabase.functions.invoke("create-user", {
         body: {
-          email: form.email.trim(),
+          email: normalizeEmail(form.email),
           password: form.password,
-          name: form.name.trim(),
+          name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
         },
