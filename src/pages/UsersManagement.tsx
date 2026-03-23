@@ -218,7 +218,25 @@ const UsersManagement = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const openCreate = () => {
+  const deleteMutation = useMutation({
+    mutationFn: async (targetId: string) => {
+      const response = await supabase.functions.invoke("delete-user", {
+        body: { user_id: targetId },
+      });
+      if (response.error) throw new Error(response.error.message || "Erro ao excluir usuário.");
+      if (response.data?.error) throw new Error(response.data.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setDeleteTarget(null);
+      toast.success("Usuário excluído com sucesso.");
+    },
+    onError: (error: Error) => {
+      setDeleteTarget(null);
+      toast.error(error.message);
+    },
+  });
+
     setIsCreating(true);
     setForm({
       id: "",
