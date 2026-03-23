@@ -46,6 +46,7 @@ interface UserWithRole {
   store_id: string | null;
   active: boolean;
   role: AppRole | null;
+  manager_can_sell: boolean;
 }
 
 interface UserFormState {
@@ -55,6 +56,7 @@ interface UserFormState {
   password: string;
   role: AppRole;
   store_id: string;
+  manager_can_sell: boolean;
 }
 
 const roleLabels: Record<AppRole, string> = {
