@@ -237,6 +237,7 @@ const UsersManagement = () => {
     },
   });
 
+  const openCreate = () => {
     setIsCreating(true);
     setForm({
       id: "",
