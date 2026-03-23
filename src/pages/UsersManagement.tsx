@@ -60,6 +60,16 @@ interface UserFormState {
   manager_can_sell: boolean;
 }
 
+interface CreateUserFunctionPayload {
+  error?: string;
+  code?: string;
+  message?: string;
+  existing_user?: {
+    email?: string;
+    id?: string;
+  };
+}
+
 const roleLabels: Record<AppRole, string> = {
   super_admin: "Super Admin",
   admin: "Admin",
@@ -75,6 +85,26 @@ const isAppRole = (value: string | null | undefined): value is AppRole => {
 const roleNeedsStore = (role: AppRole) => role === "manager" || role === "seller";
 
 const normalizeStoreId = (role: AppRole, storeId: string) => (roleNeedsStore(role) ? storeId : null);
+
+const extractFunctionPayload = async (response?: Response): Promise<CreateUserFunctionPayload | null> => {
+  if (!response) return null;
+
+  const contentType = response.headers.get("Content-Type") || "";
+
+  if (contentType.includes("application/json")) {
+    return response
+      .clone()
+      .json()
+      .catch(() => null);
+  }
+
+  const text = await response
+    .clone()
+    .text()
+    .catch(() => "");
+
+  return text ? { message: text } : null;
+};
 
 const UsersManagement = () => {
   const { profile, role: myRole, user, refreshProfile } = useAuth();
@@ -184,16 +214,30 @@ const UsersManagement = () => {
       },
     });
 
-    if (response.error) throw new Error(response.error.message || "Erro ao criar usuário.");
-    
-    if (response.data?.error === "USER_DEACTIVATED") {
+    const errorPayload = response.error ? await extractFunctionPayload(response.response) : null;
+    const deactivatedPayload = (errorPayload?.code === "USER_DEACTIVATED" || errorPayload?.error === "USER_DEACTIVATED")
+      ? errorPayload
+      : response.data?.error === "USER_DEACTIVATED"
+        ? response.data
+        : null;
+
+    if (deactivatedPayload?.existing_user?.email && deactivatedPayload?.existing_user?.id) {
       setReactivateDialog({ 
-        email: response.data.existing_user.email, 
-        userId: response.data.existing_user.id 
+        email: deactivatedPayload.existing_user.email,
+        userId: deactivatedPayload.existing_user.id,
       });
       throw new Error("__DEACTIVATED__");
     }
-    
+
+    if (response.error) {
+      throw new Error(
+        errorPayload?.message ||
+        errorPayload?.error ||
+        response.error.message ||
+        "Erro ao criar usuário.",
+      );
+    }
+
     if (response.data?.error) throw new Error(response.data.error);
     return response.data;
   };
