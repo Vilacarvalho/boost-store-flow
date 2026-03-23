@@ -304,7 +304,7 @@ const UsersManagement = () => {
     setDialogOpen(true);
   };
 
-  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isSaving = createMutation.isPending || updateMutation.isPending || reactivateMutation.isPending;
   const isSaveDisabled =
     !form.name.trim() ||
     (isCreating && (!form.email.trim() || !form.password)) ||
