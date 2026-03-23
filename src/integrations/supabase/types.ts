@@ -590,6 +590,7 @@ export type Database = {
           created_via: string
           email: string
           id: string
+          manager_can_sell: boolean
           name: string
           organization_id: string | null
           store_id: string | null
@@ -602,6 +603,7 @@ export type Database = {
           created_via?: string
           email: string
           id: string
+          manager_can_sell?: boolean
           name: string
           organization_id?: string | null
           store_id?: string | null
@@ -614,6 +616,7 @@ export type Database = {
           created_via?: string
           email?: string
           id?: string
+          manager_can_sell?: boolean
           name?: string
           organization_id?: string | null
           store_id?: string | null
