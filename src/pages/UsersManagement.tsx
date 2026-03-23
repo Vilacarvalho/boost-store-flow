@@ -88,6 +88,7 @@ const UsersManagement = () => {
     password: "",
     role: "seller",
     store_id: "",
+    manager_can_sell: false,
   });
 
   const { data: stores = [] } = useQuery({
