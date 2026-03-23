@@ -476,9 +476,9 @@ const UsersManagement = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir usuário "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogTitle>Desativar usuário "{deleteTarget?.name}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              O usuário será desativado e perderá acesso ao sistema. Essa ação não pode ser desfeita facilmente.
+              O usuário será desativado e perderá acesso ao sistema. Seus dados históricos serão preservados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
