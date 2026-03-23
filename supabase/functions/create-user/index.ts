@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
 
     const { data: orgId } = await supabaseClient.rpc('get_user_org_id', { _user_id: caller.id })
 
-    const { email, password, name, role, store_id, manager_can_sell } = await req.json()
+    const { email, password, name, role, store_id, manager_can_sell, reactivate } = await req.json()
 
     if (!email || !password || !name || !role) {
       return new Response(JSON.stringify({ error: 'Campos obrigatórios: email, password, name, role' }), {
@@ -77,6 +77,91 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // Check if user already exists in auth by listing users with this email
+    const { data: existingUsers } = await adminClient.auth.admin.listUsers({ perPage: 1000 })
+    const existingAuthUser = existingUsers?.users?.find(
+      (u: any) => u.email?.toLowerCase() === emailNorm
+    )
+
+    if (existingAuthUser) {
+      // Check if there's a deactivated profile
+      const { data: existingProfile } = await adminClient
+        .from('profiles')
+        .select('id, active, organization_id')
+        .eq('id', existingAuthUser.id)
+        .maybeSingle()
+
+      if (existingProfile && existingProfile.active) {
+        return new Response(JSON.stringify({ 
+          error: 'Já existe um usuário ativo com este email' 
+        }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      if (existingProfile && !existingProfile.active) {
+        // User exists but is deactivated
+        if (!reactivate) {
+          return new Response(JSON.stringify({ 
+            error: 'USER_DEACTIVATED',
+            message: 'Já existe um usuário desativado com este email. Deseja reativá-lo?',
+            existing_user: {
+              id: existingAuthUser.id,
+              email: emailNorm,
+              name: existingProfile.organization_id === orgId ? normalizedName : normalizedName,
+            }
+          }), {
+            status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+
+        // Reactivate the user
+        const resolvedStoreId = roleNeedsStore ? store_id : null
+
+        // Update password
+        await adminClient.auth.admin.updateUserById(existingAuthUser.id, { 
+          password,
+          email_confirm: true,
+        })
+
+        // Reactivate profile
+        await adminClient.from('profiles').update({
+          name: normalizedName,
+          email: emailNorm,
+          active: true,
+          organization_id: orgId,
+          store_id: resolvedStoreId,
+          manager_can_sell: role === 'manager' ? !!manager_can_sell : false,
+          created_by: caller.id,
+          created_via: 'admin_panel',
+        }).eq('id', existingAuthUser.id)
+
+        // Update or insert role
+        const { data: existingRole } = await adminClient
+          .from('user_roles')
+          .select('id')
+          .eq('user_id', existingAuthUser.id)
+          .maybeSingle()
+
+        if (existingRole) {
+          await adminClient.from('user_roles')
+            .update({ role })
+            .eq('id', existingRole.id)
+        } else {
+          await adminClient.from('user_roles')
+            .insert({ user_id: existingAuthUser.id, role })
+        }
+
+        return new Response(JSON.stringify({ 
+          user: { id: existingAuthUser.id, email: emailNorm },
+          reactivated: true 
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
     // Mark as admin-created so handle_new_user trigger skips
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: emailNorm,
@@ -89,6 +174,12 @@ Deno.serve(async (req) => {
     })
 
     if (createError) {
+      // Handle duplicate email error from auth with friendly message
+      if (createError.message?.includes('already been registered') || createError.message?.includes('already exists')) {
+        return new Response(JSON.stringify({ error: 'Já existe um usuário com este email' }), {
+          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
       return new Response(JSON.stringify({ error: createError.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })

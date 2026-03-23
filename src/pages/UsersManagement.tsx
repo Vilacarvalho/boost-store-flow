@@ -166,29 +166,58 @@ const UsersManagement = () => {
     enabled: !!profile,
   });
 
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const validationError = validateForm();
-      if (validationError) throw new Error(validationError);
+  const [reactivateDialog, setReactivateDialog] = useState<{ email: string; userId: string } | null>(null);
 
-      const response = await supabase.functions.invoke("create-user", {
-        body: {
-          email: normalizeEmail(form.email),
-          password: form.password,
-          name: normalizeName(form.name),
-          role: form.role,
-          store_id: normalizeStoreId(form.role, form.store_id),
-          manager_can_sell: form.role === "manager" ? form.manager_can_sell : false,
-        },
+  const doCreateUser = async (reactivate = false) => {
+    const validationError = validateForm();
+    if (validationError) throw new Error(validationError);
+
+    const response = await supabase.functions.invoke("create-user", {
+      body: {
+        email: normalizeEmail(form.email),
+        password: form.password,
+        name: normalizeName(form.name),
+        role: form.role,
+        store_id: normalizeStoreId(form.role, form.store_id),
+        manager_can_sell: form.role === "manager" ? form.manager_can_sell : false,
+        reactivate,
+      },
+    });
+
+    if (response.error) throw new Error(response.error.message || "Erro ao criar usuário.");
+    
+    if (response.data?.error === "USER_DEACTIVATED") {
+      setReactivateDialog({ 
+        email: response.data.existing_user.email, 
+        userId: response.data.existing_user.id 
       });
+      throw new Error("__DEACTIVATED__");
+    }
+    
+    if (response.data?.error) throw new Error(response.data.error);
+    return response.data;
+  };
 
-      if (response.error) throw new Error(response.error.message || "Erro ao criar usuário.");
-      if (response.data?.error) throw new Error(response.data.error);
+  const createMutation = useMutation({
+    mutationFn: () => doCreateUser(false),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setDialogOpen(false);
+      toast.success(data?.reactivated ? "Usuário reativado com sucesso." : "Usuário criado com sucesso.");
     },
+    onError: (error: Error) => {
+      if (error.message === "__DEACTIVATED__") return; // handled by reactivate dialog
+      toast.error(error.message);
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: () => doCreateUser(true),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setDialogOpen(false);
-      toast.success("Usuário criado com sucesso.");
+      setReactivateDialog(null);
+      toast.success("Usuário reativado com sucesso.");
     },
     onError: (error: Error) => toast.error(error.message),
   });

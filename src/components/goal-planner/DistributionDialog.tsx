@@ -58,7 +58,7 @@ const DistributionDialog = ({
         return;
       }
 
-      // Get roles to filter eligible users
+      // Get roles to filter eligible users (only active profiles already filtered above)
       const { data: roles } = await supabase
         .from("user_roles")
         .select("user_id, role")
@@ -68,7 +68,7 @@ const DistributionDialog = ({
         (roles || []).map((r) => [r.user_id, r.role])
       );
 
-      // Eligible: sellers + managers with manager_can_sell = true
+      // Eligible: active sellers + active managers with manager_can_sell = true
       const eligibleProfiles = profiles.filter((p) => {
         const role = roleMap.get(p.id);
         if (role === "seller") return true;
