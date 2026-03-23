@@ -229,7 +229,7 @@ const UsersManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setDeleteTarget(null);
-      toast.success("Usuário excluído com sucesso.");
+      toast.success("Usuário desativado com sucesso.");
     },
     onError: (error: Error) => {
       setDeleteTarget(null);
