@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
 
     const { data: orgId } = await supabaseClient.rpc('get_user_org_id', { _user_id: caller.id })
 
-    const { email, password, name, role, store_id } = await req.json()
+    const { email, password, name, role, store_id, manager_can_sell } = await req.json()
 
     if (!email || !password || !name || !role) {
       return new Response(JSON.stringify({ error: 'Campos obrigatórios: email, password, name, role' }), {
@@ -104,7 +104,8 @@ Deno.serve(async (req) => {
       organization_id: orgId,
       store_id: resolvedStoreId,
       created_by: caller.id,
-      created_via: 'admin_panel'
+      created_via: 'admin_panel',
+      manager_can_sell: role === 'manager' ? !!manager_can_sell : false,
     })
 
     // Insert the correct role chosen by the admin (no trigger conflict)

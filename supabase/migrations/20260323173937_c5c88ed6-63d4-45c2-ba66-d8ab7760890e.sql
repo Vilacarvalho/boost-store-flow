@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS manager_can_sell boolean NOT NULL DEFAULT false;

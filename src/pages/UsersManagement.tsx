@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { validateName, validateEmail, normalizeName, normalizeEmail } from "@/lib/validation";
@@ -46,6 +47,7 @@ interface UserWithRole {
   store_id: string | null;
   active: boolean;
   role: AppRole | null;
+  manager_can_sell: boolean;
 }
 
 interface UserFormState {
@@ -55,6 +57,7 @@ interface UserFormState {
   password: string;
   role: AppRole;
   store_id: string;
+  manager_can_sell: boolean;
 }
 
 const roleLabels: Record<AppRole, string> = {
@@ -86,6 +89,7 @@ const UsersManagement = () => {
     password: "",
     role: "seller",
     store_id: "",
+    manager_can_sell: false,
   });
 
   const { data: stores = [] } = useQuery({
@@ -129,7 +133,7 @@ const UsersManagement = () => {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users", myRole, profile?.store_id],
     queryFn: async () => {
-      let query = supabase.from("profiles").select("id, name, email, store_id, active").eq("active", true).order("name");
+      let query = supabase.from("profiles").select("id, name, email, store_id, active, manager_can_sell").eq("active", true).order("name");
 
       if (myRole === "manager" && profile?.store_id) {
         query = query.eq("store_id", profile.store_id);
@@ -156,6 +160,7 @@ const UsersManagement = () => {
       return (profiles || []).map((item) => ({
         ...item,
         role: roleMap.get(item.id) ?? null,
+        manager_can_sell: (item as any).manager_can_sell ?? false,
       })) as UserWithRole[];
     },
     enabled: !!profile,
@@ -173,6 +178,7 @@ const UsersManagement = () => {
           name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
+          manager_can_sell: form.role === "manager" ? form.manager_can_sell : false,
         },
       });
 
@@ -199,6 +205,7 @@ const UsersManagement = () => {
           name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
+          manager_can_sell: form.role === "manager" ? form.manager_can_sell : false,
         },
       });
 
@@ -246,6 +253,7 @@ const UsersManagement = () => {
       password: "",
       role: "seller",
       store_id: stores[0]?.id || "",
+      manager_can_sell: false,
     });
     setDialogOpen(true);
   };
@@ -262,6 +270,7 @@ const UsersManagement = () => {
       password: "",
       role: resolvedRole,
       store_id: resolvedRole === "manager" || resolvedRole === "seller" ? resolvedStoreId : "",
+      manager_can_sell: selectedUser.manager_can_sell ?? false,
     });
     setDialogOpen(true);
   };
@@ -315,9 +324,14 @@ const UsersManagement = () => {
                       <TableCell className="font-medium">{listedUser.name}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{listedUser.email}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {listedUser.role ? roleLabels[listedUser.role] : "Sem role"}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline">
+                            {listedUser.role ? roleLabels[listedUser.role] : "Sem role"}
+                          </Badge>
+                          {listedUser.role === "manager" && listedUser.manager_can_sell && (
+                            <Badge variant="secondary" className="text-[10px]">Vende</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         {listedUser.store_id ? storeMap.get(listedUser.store_id) ?? "Loja inválida" : "—"}
@@ -458,6 +472,26 @@ const UsersManagement = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {form.role === "manager" && (
+              <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+                <Checkbox
+                  id="manager_can_sell"
+                  checked={form.manager_can_sell}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, manager_can_sell: !!checked }))
+                  }
+                />
+                <div>
+                  <Label htmlFor="manager_can_sell" className="cursor-pointer text-sm font-medium">
+                    Este gerente também vende?
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Se marcado, participa da divisão de metas e ranking comercial.
+                  </p>
+                </div>
               </div>
             )}
           </div>
