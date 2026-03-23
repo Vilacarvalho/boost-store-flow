@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
     const rawName = typeof payload.name === 'string' ? payload.name.trim().replace(/\s+/g, ' ') : ''
     const role = payload.role as AppRole
     const storeId = typeof payload.store_id === 'string' && payload.store_id.trim() ? payload.store_id.trim() : null
+    const managerCanSell = !!payload.manager_can_sell
 
     if (!userId || !rawName || !isValidRole(role)) {
       return new Response(JSON.stringify({ error: 'Dados inválidos para atualização do usuário' }), {
