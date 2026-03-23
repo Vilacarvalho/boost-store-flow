@@ -44,6 +44,14 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Validate role requires store_id
+    const roleNeedsStore = role === 'seller' || role === 'manager'
+    if (roleNeedsStore && !store_id) {
+      return new Response(JSON.stringify({ error: 'Vendedor e gerente precisam de uma loja válida' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
     // Validate name: at least 2 words, each with 2+ chars, no numbers
     const nameWords = name.trim().replace(/\s+/g, ' ').split(' ').filter((w: string) => w.length >= 2)
     if (nameWords.length < 2 || /[^a-zA-ZÀ-ÿ\s'-]/.test(name.trim())) {
@@ -69,11 +77,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
+    // Mark as admin-created so handle_new_user trigger skips
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email: emailNorm,
       password,
       email_confirm: true,
-      user_metadata: { name: normalizedName }
+      user_metadata: {
+        name: normalizedName,
+        created_by_admin: 'true'
+      }
     })
 
     if (createError) {
@@ -82,22 +94,26 @@ Deno.serve(async (req) => {
       })
     }
 
-    await adminClient.from('profiles').update({
+    // Since trigger is skipped, we create profile directly
+    const resolvedStoreId = roleNeedsStore ? store_id : null
+
+    await adminClient.from('profiles').insert({
+      id: newUser.user.id,
+      name: normalizedName,
+      email: emailNorm,
       organization_id: orgId,
-      store_id: store_id || null,
-      name: normalizedName
-    }).eq('id', newUser.user.id)
+      store_id: resolvedStoreId,
+      created_by: caller.id,
+      created_via: 'admin_panel'
+    })
 
-    // Delete trigger-created role (handle_new_user always inserts admin)
-    await adminClient.from('user_roles').delete().eq('user_id', newUser.user.id)
-
-    // Insert the correct role chosen by the admin
+    // Insert the correct role chosen by the admin (no trigger conflict)
     await adminClient.from('user_roles').insert({
       user_id: newUser.user.id,
       role
     })
 
-    return new Response(JSON.stringify({ user: { id: newUser.user.id, email } }), {
+    return new Response(JSON.stringify({ user: { id: newUser.user.id, email: emailNorm } }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
