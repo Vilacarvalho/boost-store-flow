@@ -250,6 +250,7 @@ const UsersManagement = () => {
       password: "",
       role: "seller",
       store_id: stores[0]?.id || "",
+      manager_can_sell: false,
     });
     setDialogOpen(true);
   };
