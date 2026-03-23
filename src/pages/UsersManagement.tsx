@@ -1,13 +1,23 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Pencil, Plus, Users } from "lucide-react";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { validateName, validateEmail, normalizeName, normalizeEmail } from "@/lib/validation";
 import AppLayout from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +78,7 @@ const UsersManagement = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [form, setForm] = useState<UserFormState>({
     id: "",
     name: "",
@@ -207,6 +218,25 @@ const UsersManagement = () => {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (targetId: string) => {
+      const response = await supabase.functions.invoke("delete-user", {
+        body: { user_id: targetId },
+      });
+      if (response.error) throw new Error(response.error.message || "Erro ao excluir usuário.");
+      if (response.data?.error) throw new Error(response.data.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      setDeleteTarget(null);
+      toast.success("Usuário excluído com sucesso.");
+    },
+    onError: (error: Error) => {
+      setDeleteTarget(null);
+      toast.error(error.message);
+    },
+  });
+
   const openCreate = () => {
     setIsCreating(true);
     setForm({
@@ -294,9 +324,21 @@ const UsersManagement = () => {
                       </TableCell>
                       {(myRole === "admin" || myRole === "super_admin") && (
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(listedUser)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(listedUser)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            {listedUser.id !== user?.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Excluir"
+                                onClick={() => setDeleteTarget({ id: listedUser.id, name: listedUser.name })}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
@@ -430,6 +472,26 @@ const UsersManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir usuário "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O usuário será desativado e perderá acesso ao sistema. Essa ação não pode ser desfeita facilmente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
