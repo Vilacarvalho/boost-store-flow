@@ -132,7 +132,7 @@ const UsersManagement = () => {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users", myRole, profile?.store_id],
     queryFn: async () => {
-      let query = supabase.from("profiles").select("id, name, email, store_id, active").eq("active", true).order("name");
+      let query = supabase.from("profiles").select("id, name, email, store_id, active, manager_can_sell").eq("active", true).order("name");
 
       if (myRole === "manager" && profile?.store_id) {
         query = query.eq("store_id", profile.store_id);
@@ -159,6 +159,7 @@ const UsersManagement = () => {
       return (profiles || []).map((item) => ({
         ...item,
         role: roleMap.get(item.id) ?? null,
+        manager_can_sell: (item as any).manager_can_sell ?? false,
       })) as UserWithRole[];
     },
     enabled: !!profile,
