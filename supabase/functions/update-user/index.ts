@@ -170,6 +170,7 @@ Deno.serve(async (req) => {
       .update({
         name,
         store_id: normalizedStoreId,
+        manager_can_sell: role === 'manager' ? managerCanSell : false,
       })
       .eq('id', userId)
 
