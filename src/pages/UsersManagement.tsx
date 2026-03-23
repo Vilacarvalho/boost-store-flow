@@ -267,6 +267,7 @@ const UsersManagement = () => {
       password: "",
       role: resolvedRole,
       store_id: resolvedRole === "manager" || resolvedRole === "seller" ? resolvedStoreId : "",
+      manager_can_sell: selectedUser.manager_can_sell ?? false,
     });
     setDialogOpen(true);
   };
