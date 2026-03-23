@@ -468,6 +468,26 @@ const UsersManagement = () => {
                 </Select>
               </div>
             )}
+
+            {form.role === "manager" && (
+              <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+                <Checkbox
+                  id="manager_can_sell"
+                  checked={form.manager_can_sell}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, manager_can_sell: !!checked }))
+                  }
+                />
+                <div>
+                  <Label htmlFor="manager_can_sell" className="cursor-pointer text-sm font-medium">
+                    Este gerente também vende?
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Se marcado, participa da divisão de metas e ranking comercial.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
