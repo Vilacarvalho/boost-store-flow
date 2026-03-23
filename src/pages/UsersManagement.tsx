@@ -204,6 +204,7 @@ const UsersManagement = () => {
           name: normalizeName(form.name),
           role: form.role,
           store_id: normalizeStoreId(form.role, form.store_id),
+          manager_can_sell: form.role === "manager" ? form.manager_can_sell : false,
         },
       });
 
