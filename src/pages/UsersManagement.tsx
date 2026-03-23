@@ -324,9 +324,14 @@ const UsersManagement = () => {
                       <TableCell className="font-medium">{listedUser.name}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{listedUser.email}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {listedUser.role ? roleLabels[listedUser.role] : "Sem role"}
-                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline">
+                            {listedUser.role ? roleLabels[listedUser.role] : "Sem role"}
+                          </Badge>
+                          {listedUser.role === "manager" && listedUser.manager_can_sell && (
+                            <Badge variant="secondary" className="text-[10px]">Vende</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm">
                         {listedUser.store_id ? storeMap.get(listedUser.store_id) ?? "Loja inválida" : "—"}
