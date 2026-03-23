@@ -356,13 +356,34 @@ const GoalPerformance = () => {
     const storeName = stores.find(s => s.id === storeId)?.name || "Loja";
     setStorePerformance(buildPerformance(storeId, storeName, storeGoalValue, storeRealized));
 
-    const { data: sellers } = await supabase
+    const { data: profilesData } = await supabase
       .from("profiles")
-      .select("id, name, store_id")
+      .select("id, name, store_id, manager_can_sell")
       .eq("store_id", storeId)
       .eq("active", true);
 
-    if (!sellers || sellers.length === 0) {
+    if (!profilesData || profilesData.length === 0) {
+      setPerformanceData([]);
+      setUserPeriodGoals([]);
+      return;
+    }
+
+    // Filter to only eligible sellers: role=seller OR role=manager with manager_can_sell
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", profilesData.map(p => p.id));
+
+    const roleMap = new Map((rolesData || []).map(r => [r.user_id, r.role]));
+    
+    const sellers = profilesData.filter(p => {
+      const r = roleMap.get(p.id);
+      if (r === "seller") return true;
+      if (r === "manager" && p.manager_can_sell) return true;
+      return false;
+    });
+
+    if (sellers.length === 0) {
       setPerformanceData([]);
       setUserPeriodGoals([]);
       return;
