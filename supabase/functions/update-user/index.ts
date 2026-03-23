@@ -50,6 +50,8 @@ Deno.serve(async (req) => {
 
     const callerIsSuperAdmin = !!isSuperAdmin
 
+    const payload = await req.json()
+
     const userId = payload.user_id as string | undefined
     const rawName = typeof payload.name === 'string' ? payload.name.trim().replace(/\s+/g, ' ') : ''
     const role = payload.role as AppRole
