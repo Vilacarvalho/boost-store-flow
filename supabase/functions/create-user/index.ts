@@ -88,6 +88,10 @@ Deno.serve(async (req) => {
       name: normalizedName
     }).eq('id', newUser.user.id)
 
+    // Delete trigger-created role (handle_new_user always inserts admin)
+    await adminClient.from('user_roles').delete().eq('user_id', newUser.user.id)
+
+    // Insert the correct role chosen by the admin
     await adminClient.from('user_roles').insert({
       user_id: newUser.user.id,
       role
