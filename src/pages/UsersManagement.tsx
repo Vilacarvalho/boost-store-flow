@@ -555,6 +555,25 @@ const UsersManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!reactivateDialog} onOpenChange={(open) => !open && setReactivateDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Usuário desativado encontrado</AlertDialogTitle>
+            <AlertDialogDescription>
+              Já existe um usuário desativado com o email <strong>{reactivateDialog?.email}</strong>. Deseja reativá-lo com os dados informados?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reactivateMutation.mutate()}
+            >
+              {reactivateMutation.isPending ? "Reativando..." : "Reativar Usuário"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
