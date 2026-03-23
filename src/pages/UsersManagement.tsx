@@ -129,7 +129,7 @@ const UsersManagement = () => {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users", myRole, profile?.store_id],
     queryFn: async () => {
-      let query = supabase.from("profiles").select("id, name, email, store_id, active").order("name");
+      let query = supabase.from("profiles").select("id, name, email, store_id, active").eq("active", true).order("name");
 
       if (myRole === "manager" && profile?.store_id) {
         query = query.eq("store_id", profile.store_id);
@@ -229,7 +229,7 @@ const UsersManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       setDeleteTarget(null);
-      toast.success("Usuário excluído com sucesso.");
+      toast.success("Usuário desativado com sucesso.");
     },
     onError: (error: Error) => {
       setDeleteTarget(null);
@@ -476,9 +476,9 @@ const UsersManagement = () => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir usuário "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogTitle>Desativar usuário "{deleteTarget?.name}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              O usuário será desativado e perderá acesso ao sistema. Essa ação não pode ser desfeita facilmente.
+              O usuário será desativado e perderá acesso ao sistema. Seus dados históricos serão preservados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -487,7 +487,7 @@ const UsersManagement = () => {
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+              {deleteMutation.isPending ? "Desativando..." : "Desativar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
