@@ -129,7 +129,7 @@ const UsersManagement = () => {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users", myRole, profile?.store_id],
     queryFn: async () => {
-      let query = supabase.from("profiles").select("id, name, email, store_id, active").order("name");
+      let query = supabase.from("profiles").select("id, name, email, store_id, active").eq("active", true).order("name");
 
       if (myRole === "manager" && profile?.store_id) {
         query = query.eq("store_id", profile.store_id);
