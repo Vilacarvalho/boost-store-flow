@@ -45,10 +45,10 @@ const DistributionDialog = ({
     if (!open || !storeId) return;
     const fetchSellers = async () => {
       setLoading(true);
-      // Get sellers for this store
+      // Get active profiles for this store
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, name")
+        .select("id, name, manager_can_sell")
         .eq("store_id", storeId)
         .eq("active", true);
 
@@ -58,15 +58,23 @@ const DistributionDialog = ({
         return;
       }
 
-      // Get seller roles to filter only sellers
+      // Get roles to filter eligible users
       const { data: roles } = await supabase
         .from("user_roles")
         .select("user_id, role")
         .in("user_id", profiles.map((p) => p.id));
 
-      const sellerIds = new Set(
-        (roles || []).filter((r) => r.role === "seller").map((r) => r.user_id)
+      const roleMap = new Map(
+        (roles || []).map((r) => [r.user_id, r.role])
       );
+
+      // Eligible: sellers + managers with manager_can_sell = true
+      const eligibleProfiles = profiles.filter((p) => {
+        const role = roleMap.get(p.id);
+        if (role === "seller") return true;
+        if (role === "manager" && (p as any).manager_can_sell) return true;
+        return false;
+      });
 
       // Get historical sales for proportional distribution
       const { data: salesData } = await supabase
@@ -80,11 +88,10 @@ const DistributionDialog = ({
         salesByUser.set(s.seller_id, (salesByUser.get(s.seller_id) || 0) + (s.total_value || 0));
       });
 
-      const sellerProfiles = profiles.filter((p) => sellerIds.has(p.id));
-      const equalShare = sellerProfiles.length > 0 ? goalValue / sellerProfiles.length : 0;
+      const equalShare = eligibleProfiles.length > 0 ? goalValue / eligibleProfiles.length : 0;
 
       setSellers(
-        sellerProfiles.map((p) => ({
+        eligibleProfiles.map((p) => ({
           id: p.id,
           name: p.name,
           historicalValue: salesByUser.get(p.id) || 0,
