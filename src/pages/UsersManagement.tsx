@@ -323,9 +323,21 @@ const UsersManagement = () => {
                       </TableCell>
                       {(myRole === "admin" || myRole === "super_admin") && (
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(listedUser)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(listedUser)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            {listedUser.id !== user?.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Excluir"
+                                onClick={() => setDeleteTarget({ id: listedUser.id, name: listedUser.name })}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
