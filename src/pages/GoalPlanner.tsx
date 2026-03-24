@@ -127,7 +127,7 @@ const GoalPlanner = () => {
   const setTargetStart = (v: string) => draft.setValues(p => ({ ...p, targetStart: v }));
   const targetEnd = draft.values.targetEnd;
   const setTargetEnd = (v: string) => draft.setValues(p => ({ ...p, targetEnd: v }));
-  const selectedStoreIds = draft.values.selectedStoreIds;
+  const selectedStoreIds = Array.isArray(draft.values.selectedStoreIds) ? draft.values.selectedStoreIds : [];
   const setSelectedStoreIds = (fn: (prev: string[]) => string[]) => draft.setValues(p => ({ ...p, selectedStoreIds: fn(p.selectedStoreIds) }));
   const planningMode = draft.values.planningMode;
   const setPlanningMode = (v: PlanningMode) => draft.setValues(p => ({ ...p, planningMode: v }));
