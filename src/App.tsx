@@ -186,6 +186,13 @@ const App = () => (
               }
             />
             <Route
+              path="/network-setup"
+              element={
+                <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
+                  <NetworkSetup />
+                </ProtectedRoute>
+              }
+            <Route
               path="/supervisor-dashboard"
               element={
                 <ProtectedRoute allowedRoles={["supervisor"]}>
