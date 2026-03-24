@@ -315,6 +315,7 @@ const NewAttendance = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <UnsavedChangesGuard isDirty={draft.isDirty} />
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="flex items-center h-14 px-4 max-w-lg mx-auto">
