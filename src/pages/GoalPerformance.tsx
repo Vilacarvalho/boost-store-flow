@@ -570,6 +570,40 @@ const GoalPerformance = () => {
                     );
                   })()}
 
+                  {/* Ritmo necessário */}
+                  {consolidated.remaining > 0 && consolidated.daysRemaining > 0 && (() => {
+                    const ratio = consolidated.dailyAvg > 0 ? consolidated.neededPerDay / consolidated.dailyAvg : Infinity;
+                    const onTrack = consolidated.dailyAvg >= consolidated.neededPerDay;
+                    return (
+                      <div className={`rounded-2xl p-4 shadow-card space-y-2 mt-3 ${onTrack ? "bg-success/5 border border-success/20" : "bg-destructive/5 border border-destructive/20"}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Ritmo necessário por dia restante
+                          </span>
+                          <TrendingUp className={`h-4 w-4 ${onTrack ? "text-success" : "text-destructive"}`} />
+                        </div>
+                        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${onTrack ? "text-success" : "text-destructive"}`}>
+                          {formatBRL(consolidated.neededPerDay)}
+                          <span className="text-sm font-normal text-muted-foreground ml-1">/ dia</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Média atual: {formatBRL(consolidated.dailyAvg)}/dia · {consolidated.daysRemaining} dias restantes
+                        </p>
+                        {onTrack ? (
+                          <div className="flex items-center gap-1.5 text-xs text-success">
+                            <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>Meta será atingida antes do prazo no ritmo atual</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-xs text-destructive">
+                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>No ritmo atual, a meta não será atingida — necessário vender {ratio < Infinity ? `${ratio.toFixed(1)}x` : ""} mais por dia</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <MetricCard
                       label="Restante p/ Meta"
