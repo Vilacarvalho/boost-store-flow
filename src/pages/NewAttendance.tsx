@@ -39,15 +39,63 @@ const lossReasons = [
 
 /* ── component ───────────────────────────────────── */
 
+interface AttendanceDraft {
+  customerName: string;
+  customerPhone: string;
+  productType: string;
+  result: "won" | "lost" | "";
+  objectionReason: string;
+  objectionDescription: string;
+  notes: string;
+  productsCount: number;
+  totalValue: string;
+}
+
+const INITIAL_DRAFT: AttendanceDraft = {
+  customerName: "",
+  customerPhone: "",
+  productType: "",
+  result: "",
+  objectionReason: "",
+  objectionDescription: "",
+  notes: "",
+  productsCount: 1,
+  totalValue: "",
+};
+
 const NewAttendance = () => {
   const navigate = useNavigate();
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  // Customer (optional)
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const draft = useFormDraft<AttendanceDraft>({
+    key: "new-attendance",
+    initialValues: INITIAL_DRAFT,
+    userId: user?.id,
+  });
+
+  // Derived state from draft
+  const customerName = draft.values.customerName;
+  const setCustomerName = (v: string) => draft.setValues(prev => ({ ...prev, customerName: v }));
+  const customerPhone = draft.values.customerPhone;
+  const setCustomerPhone = (v: string) => draft.setValues(prev => ({ ...prev, customerPhone: v }));
+  const productType = draft.values.productType;
+  const setProductType = (v: string) => draft.setValues(prev => ({ ...prev, productType: v }));
+  const result = draft.values.result;
+  const setResult = (v: "won" | "lost" | "") => draft.setValues(prev => ({ ...prev, result: v }));
+  const objectionReason = draft.values.objectionReason;
+  const setObjectionReason = (v: string) => draft.setValues(prev => ({ ...prev, objectionReason: v }));
+  const objectionDescription = draft.values.objectionDescription;
+  const setObjectionDescription = (v: string) => draft.setValues(prev => ({ ...prev, objectionDescription: v }));
+  const notes = draft.values.notes;
+  const setNotes = (v: string) => draft.setValues(prev => ({ ...prev, notes: v }));
+  const productsCount = draft.values.productsCount;
+  const setProductsCount = (v: number) => draft.setValues(prev => ({ ...prev, productsCount: v }));
+  const totalValue = draft.values.totalValue;
+  const setTotalValue = (v: string) => draft.setValues(prev => ({ ...prev, totalValue: v }));
+
+  // Customer matching state (not part of draft)
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
   const [matchedCustomerInfo, setMatchedCustomerInfo] = useState<{
     name: string; whatsapp: string | null; store_name?: string; last_sale_date?: string;
@@ -60,15 +108,6 @@ const NewAttendance = () => {
   const [nameSuggestions, setNameSuggestions] = useState<Array<{
     id: string; name: string; whatsapp: string | null;
   }>>([]);
-
-  // Attendance fields
-  const [productType, setProductType] = useState("");
-  const [result, setResult] = useState<"won" | "lost" | "">("");
-  const [objectionReason, setObjectionReason] = useState("");
-  const [objectionDescription, setObjectionDescription] = useState("");
-  const [notes, setNotes] = useState("");
-  const [productsCount, setProductsCount] = useState(1);
-  const [totalValue, setTotalValue] = useState("");
 
   // Smart prompt
   const [phoneError, setPhoneError] = useState("");
