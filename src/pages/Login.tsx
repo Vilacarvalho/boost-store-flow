@@ -20,6 +20,13 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
+    if (deactivatedMessage) {
+      toast({ title: "Acesso desativado", description: deactivatedMessage, variant: "destructive" });
+      clearDeactivatedMessage();
+    }
+  }, [deactivatedMessage, toast, clearDeactivatedMessage]);
+
+  useEffect(() => {
     if (authLoading || !session) return;
     navigate("/post-login", { replace: true });
   }, [authLoading, session, navigate]);
