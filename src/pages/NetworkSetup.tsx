@@ -1,4 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { UnsavedChangesGuard } from "@/components/UnsavedChangesGuard";
+import { AutosaveIndicator } from "@/components/AutosaveIndicator";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
