@@ -99,16 +99,23 @@ const GoalPlanner = () => {
     notes: string;
   }
 
+  const defaultDraftValues: PlannerDraft = {
+    periodType: "monthly", refStart: "", refEnd: "", targetStart: "", targetEnd: "",
+    selectedStoreIds: [], planningMode: "balanced",
+    breakEvenInput: "", previousRevenueInput: "",
+    inflationRate: "0", marketGrowth: "0", desiredGrowth: "0", notes: "",
+  };
+
   const draft = useFormDraft<PlannerDraft>({
     key: "goal-planner",
-    initialValues: {
-      periodType: "monthly", refStart: "", refEnd: "", targetStart: "", targetEnd: "",
-      selectedStoreIds: [], planningMode: "balanced",
-      breakEvenInput: "", previousRevenueInput: "",
-      inflationRate: "0", marketGrowth: "0", desiredGrowth: "0", notes: "",
-    },
+    initialValues: defaultDraftValues,
     userId: profile?.id,
   });
+
+  // Safety: ensure selectedStoreIds is always an array (guard against corrupted localStorage draft)
+  if (!Array.isArray(draft.values.selectedStoreIds)) {
+    draft.setValues(prev => ({ ...prev, selectedStoreIds: [] }));
+  }
 
   const periodType = draft.values.periodType;
   const setPeriodType = (v: string) => draft.setValues(p => ({ ...p, periodType: v }));
@@ -120,7 +127,7 @@ const GoalPlanner = () => {
   const setTargetStart = (v: string) => draft.setValues(p => ({ ...p, targetStart: v }));
   const targetEnd = draft.values.targetEnd;
   const setTargetEnd = (v: string) => draft.setValues(p => ({ ...p, targetEnd: v }));
-  const selectedStoreIds = draft.values.selectedStoreIds;
+  const selectedStoreIds = Array.isArray(draft.values.selectedStoreIds) ? draft.values.selectedStoreIds : [];
   const setSelectedStoreIds = (fn: (prev: string[]) => string[]) => draft.setValues(p => ({ ...p, selectedStoreIds: fn(p.selectedStoreIds) }));
   const planningMode = draft.values.planningMode;
   const setPlanningMode = (v: PlanningMode) => draft.setValues(p => ({ ...p, planningMode: v }));
