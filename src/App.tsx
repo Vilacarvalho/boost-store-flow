@@ -192,6 +192,7 @@ const App = () => (
                   <NetworkSetup />
                 </ProtectedRoute>
               }
+            />
             <Route
               path="/supervisor-dashboard"
               element={
