@@ -1,6 +1,7 @@
 import { ReactNode, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import OrgLogo from "./OrgLogo";
+import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 import {
   Home,
   Users,
