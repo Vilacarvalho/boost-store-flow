@@ -83,20 +83,59 @@ const GoalPlanner = () => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
 
-  const [periodType, setPeriodType] = useState("monthly");
-  const [refStart, setRefStart] = useState("");
-  const [refEnd, setRefEnd] = useState("");
-  const [targetStart, setTargetStart] = useState("");
-  const [targetEnd, setTargetEnd] = useState("");
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
-  const [planningMode, setPlanningMode] = useState<PlanningMode>("balanced");
+  interface PlannerDraft {
+    periodType: string;
+    refStart: string;
+    refEnd: string;
+    targetStart: string;
+    targetEnd: string;
+    selectedStoreIds: string[];
+    planningMode: PlanningMode;
+    breakEvenInput: string;
+    previousRevenueInput: string;
+    inflationRate: string;
+    marketGrowth: string;
+    desiredGrowth: string;
+    notes: string;
+  }
 
-  const [breakEvenInput, setBreakEvenInput] = useState("");
-  const [previousRevenueInput, setPreviousRevenueInput] = useState("");
-  const [inflationRate, setInflationRate] = useState("0");
-  const [marketGrowth, setMarketGrowth] = useState("0");
-  const [desiredGrowth, setDesiredGrowth] = useState("0");
-  const [notes, setNotes] = useState("");
+  const draft = useFormDraft<PlannerDraft>({
+    key: "goal-planner",
+    initialValues: {
+      periodType: "monthly", refStart: "", refEnd: "", targetStart: "", targetEnd: "",
+      selectedStoreIds: [], planningMode: "balanced",
+      breakEvenInput: "", previousRevenueInput: "",
+      inflationRate: "0", marketGrowth: "0", desiredGrowth: "0", notes: "",
+    },
+    userId: profile?.id,
+  });
+
+  const periodType = draft.values.periodType;
+  const setPeriodType = (v: string) => draft.setValues(p => ({ ...p, periodType: v }));
+  const refStart = draft.values.refStart;
+  const setRefStart = (v: string) => draft.setValues(p => ({ ...p, refStart: v }));
+  const refEnd = draft.values.refEnd;
+  const setRefEnd = (v: string) => draft.setValues(p => ({ ...p, refEnd: v }));
+  const targetStart = draft.values.targetStart;
+  const setTargetStart = (v: string) => draft.setValues(p => ({ ...p, targetStart: v }));
+  const targetEnd = draft.values.targetEnd;
+  const setTargetEnd = (v: string) => draft.setValues(p => ({ ...p, targetEnd: v }));
+  const selectedStoreIds = draft.values.selectedStoreIds;
+  const setSelectedStoreIds = (fn: (prev: string[]) => string[]) => draft.setValues(p => ({ ...p, selectedStoreIds: fn(p.selectedStoreIds) }));
+  const planningMode = draft.values.planningMode;
+  const setPlanningMode = (v: PlanningMode) => draft.setValues(p => ({ ...p, planningMode: v }));
+  const breakEvenInput = draft.values.breakEvenInput;
+  const setBreakEvenInput = (v: string) => draft.setValues(p => ({ ...p, breakEvenInput: v }));
+  const previousRevenueInput = draft.values.previousRevenueInput;
+  const setPreviousRevenueInput = (v: string) => draft.setValues(p => ({ ...p, previousRevenueInput: v }));
+  const inflationRate = draft.values.inflationRate;
+  const setInflationRate = (v: string) => draft.setValues(p => ({ ...p, inflationRate: v }));
+  const marketGrowth = draft.values.marketGrowth;
+  const setMarketGrowth = (v: string) => draft.setValues(p => ({ ...p, marketGrowth: v }));
+  const desiredGrowth = draft.values.desiredGrowth;
+  const setDesiredGrowth = (v: string) => draft.setValues(p => ({ ...p, desiredGrowth: v }));
+  const notes = draft.values.notes;
+  const setNotes = (v: string) => draft.setValues(p => ({ ...p, notes: v }));
 
   const [results, setResults] = useState<CalcResult[]>([]);
   const [calculated, setCalculated] = useState(false);
