@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Target, Plus, Pencil, Trash2 } from "lucide-react";
+import { Target, Plus, Pencil, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
@@ -12,12 +12,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Input } from "@/components/ui/input";
 import { parseBRL, formatBRL, numberToBRLInput } from "@/lib/currency";
 import { toast } from "sonner";
+import DistributionDialog from "@/components/goal-planner/DistributionDialog";
 
 const periodLabels: Record<string, string> = { daily: "Diário", weekly: "Semanal", monthly: "Mensal" };
 
 const NONE_VALUE = "__none__";
+
+function getDefaultDates(periodType: string): { start: string; end: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+
+  switch (periodType) {
+    case "weekly": {
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return {
+        start: monday.toISOString().split("T")[0],
+        end: sunday.toISOString().split("T")[0],
+      };
+    }
+    case "daily":
+      return {
+        start: now.toISOString().split("T")[0],
+        end: now.toISOString().split("T")[0],
+      };
+    default: {
+      const start = new Date(y, m, 1);
+      const end = new Date(y, m + 1, 0);
+      return {
+        start: start.toISOString().split("T")[0],
+        end: end.toISOString().split("T")[0],
+      };
+    }
+  }
+}
 
 const GoalsManagement = () => {
   const { profile, role } = useAuth();
@@ -26,10 +62,21 @@ const GoalsManagement = () => {
   const [form, setForm] = useState({
     id: "",
     target_value: "",
-    period_type: "daily" as "daily" | "weekly" | "monthly",
+    period_type: "monthly" as "daily" | "weekly" | "monthly",
     store_id: "",
     user_id: "",
+    start_date: "",
+    end_date: "",
   });
+
+  // Distribution dialog
+  const [distDialog, setDistDialog] = useState<{
+    open: boolean;
+    storeId: string;
+    storeName: string;
+    goalValue: number;
+    goalId: string;
+  } | null>(null);
 
   const { data: stores = [] } = useQuery({
     queryKey: ["admin-stores"],
@@ -64,37 +111,50 @@ const GoalsManagement = () => {
       const numericValue = parseBRL(form.target_value);
       if (numericValue <= 0) throw new Error("Valor da meta deve ser maior que zero.");
 
+      const dates = form.start_date && form.end_date
+        ? { start_date: form.start_date, end_date: form.end_date }
+        : getDefaultDates(form.period_type);
+
       const payload = {
         target_value: numericValue,
         period_type: form.period_type as any,
         store_id: form.store_id || null,
         user_id: form.user_id && form.user_id !== NONE_VALUE ? form.user_id : null,
         organization_id: profile!.organization_id!,
+        start_date: dates.start_date ?? dates.start,
+        end_date: dates.end_date ?? dates.end,
+        period_start: dates.start_date ?? dates.start,
+        source: "manual",
       };
-
-      console.log("[GoalsManagement] Saving goal:", { isEdit: !!form.id, payload });
 
       if (form.id) {
         const { error } = await supabase.from("goals").update(payload).eq("id", form.id);
-        if (error) {
-          console.error("[GoalsManagement] Update error:", error);
-          throw error;
-        }
+        if (error) throw error;
+        return { id: form.id, isNew: false, payload };
       } else {
-        const { error } = await supabase.from("goals").insert(payload);
-        if (error) {
-          console.error("[GoalsManagement] Insert error:", error);
-          throw error;
-        }
+        const { data, error } = await supabase.from("goals").insert(payload).select("id").single();
+        if (error) throw error;
+        return { id: data.id, isNew: true, payload };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["admin-goals"] });
       setDialogOpen(false);
       toast.success(form.id ? "Meta atualizada!" : "Meta criada!");
+
+      // Offer distribution if it's a new store-level goal (no user_id)
+      if (result.isNew && result.payload.store_id && !result.payload.user_id) {
+        const storeName = storeMap.get(result.payload.store_id) || "Loja";
+        setDistDialog({
+          open: true,
+          storeId: result.payload.store_id,
+          storeName,
+          goalValue: result.payload.target_value,
+          goalId: result.id,
+        });
+      }
     },
     onError: (e: Error) => {
-      console.error("[GoalsManagement] Mutation error:", e);
       toast.error("Erro ao salvar meta: " + e.message);
     },
   });
@@ -115,7 +175,12 @@ const GoalsManagement = () => {
   const userMap = new Map(users.map((u) => [u.id, u.name]));
 
   const openCreate = () => {
-    setForm({ id: "", target_value: "", period_type: "daily", store_id: stores[0]?.id || "", user_id: NONE_VALUE });
+    const dates = getDefaultDates("monthly");
+    setForm({
+      id: "", target_value: "", period_type: "monthly",
+      store_id: stores[0]?.id || "", user_id: NONE_VALUE,
+      start_date: dates.start, end_date: dates.end,
+    });
     setDialogOpen(true);
   };
 
@@ -126,12 +191,19 @@ const GoalsManagement = () => {
       period_type: g.period_type,
       store_id: g.store_id || "",
       user_id: g.user_id || NONE_VALUE,
+      start_date: g.start_date || "",
+      end_date: g.end_date || "",
     });
     setDialogOpen(true);
   };
 
+  const handlePeriodChange = (v: "daily" | "weekly" | "monthly") => {
+    const dates = getDefaultDates(v);
+    setForm({ ...form, period_type: v, start_date: dates.start, end_date: dates.end });
+  };
+
   const filteredUsers = users.filter((u) => !form.store_id || u.store_id === form.store_id);
-  const canEdit = role === "admin" || role === "manager";
+  const canEdit = role === "admin" || role === "manager" || role === "super_admin";
 
   return (
     <AppLayout showFab={false}>
@@ -163,7 +235,8 @@ const GoalsManagement = () => {
                     <TableHead>Usuário</TableHead>
                     <TableHead className="text-right">Meta (R$)</TableHead>
                     <TableHead className="text-right">Atual (R$)</TableHead>
-                    {canEdit && <TableHead className="w-24" />}
+                    <TableHead>Datas</TableHead>
+                    {canEdit && <TableHead className="w-32" />}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -180,12 +253,34 @@ const GoalsManagement = () => {
                       <TableCell className="text-right text-muted-foreground">
                         {formatBRL(Number(g.current_value))}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {g.start_date && g.end_date
+                          ? `${new Date(g.start_date + "T12:00:00").toLocaleDateString("pt-BR")} — ${new Date(g.end_date + "T12:00:00").toLocaleDateString("pt-BR")}`
+                          : "—"}
+                      </TableCell>
                       {canEdit && (
                         <TableCell className="flex gap-1 justify-end">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(g)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {role === "admin" && (
+                          {/* Distribute button for store goals without user */}
+                          {g.store_id && !g.user_id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Distribuir para vendedores"
+                              onClick={() => setDistDialog({
+                                open: true,
+                                storeId: g.store_id!,
+                                storeName: storeMap.get(g.store_id!) || "Loja",
+                                goalValue: Number(g.target_value),
+                                goalId: g.id,
+                              })}
+                            >
+                              <Users className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {(role === "admin" || role === "super_admin") && (
                             <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(g.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -196,7 +291,7 @@ const GoalsManagement = () => {
                   ))}
                   {goals.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         Nenhuma meta cadastrada
                       </TableCell>
                     </TableRow>
@@ -224,7 +319,7 @@ const GoalsManagement = () => {
             </div>
             <div className="space-y-2">
               <Label>Período</Label>
-              <Select value={form.period_type} onValueChange={(v: any) => setForm({ ...form, period_type: v })}>
+              <Select value={form.period_type} onValueChange={(v: any) => handlePeriodChange(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="daily">Diário</SelectItem>
@@ -232,6 +327,16 @@ const GoalsManagement = () => {
                   <SelectItem value="monthly">Mensal</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Data Início</Label>
+                <Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Data Fim</Label>
+                <Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Loja</Label>
@@ -265,6 +370,26 @@ const GoalsManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Distribution Dialog */}
+      {distDialog && (
+        <DistributionDialog
+          open={distDialog.open}
+          onClose={() => setDistDialog(null)}
+          storeId={distDialog.storeId}
+          storeName={distDialog.storeName}
+          goalValue={distDialog.goalValue}
+          organizationId={profile!.organization_id!}
+          targetStart={form.start_date || getDefaultDates(form.period_type).start}
+          targetEnd={form.end_date || getDefaultDates(form.period_type).end}
+          periodType={form.period_type}
+          goalPlanId=""
+          parentGoalId={distDialog.goalId}
+          onDistributed={() => {
+            queryClient.invalidateQueries({ queryKey: ["admin-goals"] });
+          }}
+        />
+      )}
     </AppLayout>
   );
 };
