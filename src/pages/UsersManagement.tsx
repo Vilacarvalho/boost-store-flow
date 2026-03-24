@@ -336,16 +336,18 @@ const UsersManagement = () => {
 
   const openCreate = () => {
     setIsCreating(true);
-    setForm({
+    const newForm = {
       id: "",
       name: "",
       email: "",
       password: "",
-      role: "seller",
+      role: "seller" as AppRole,
       store_id: stores[0]?.id || "",
       manager_can_sell: false,
-    });
-    setDialogOpen(true);
+    };
+    setForm(newForm);
+    initialFormRef.current = JSON.stringify(newForm);
+    setDialogOpenRaw(true);
   };
 
   const openEdit = (selectedUser: UserWithRole) => {
@@ -353,7 +355,7 @@ const UsersManagement = () => {
     const resolvedStoreId = selectedUser.store_id && validStoreIds.has(selectedUser.store_id) ? selectedUser.store_id : "";
 
     setIsCreating(false);
-    setForm({
+    const editForm = {
       id: selectedUser.id,
       name: selectedUser.name,
       email: selectedUser.email,
@@ -361,8 +363,10 @@ const UsersManagement = () => {
       role: resolvedRole,
       store_id: resolvedRole === "manager" || resolvedRole === "seller" ? resolvedStoreId : "",
       manager_can_sell: selectedUser.manager_can_sell ?? false,
-    });
-    setDialogOpen(true);
+    };
+    setForm(editForm);
+    initialFormRef.current = JSON.stringify(editForm);
+    setDialogOpenRaw(true);
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending || reactivateMutation.isPending;
