@@ -207,7 +207,16 @@ const NetworkSetup = () => {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              {step === 0 && <StepCompany companyName={companyName} setCompanyName={setCompanyName} />}
+              {step === 0 && (
+                <StepCompany
+                  companyName={companyName}
+                  setCompanyName={setCompanyName}
+                  logoFile={logoFile}
+                  setLogoFile={setLogoFile}
+                  logoPreview={logoPreview}
+                  setLogoPreview={setLogoPreview}
+                />
+              )}
               {step === 1 && (
                 <StepStores stores={stores} addStore={addStore} removeStore={removeStore} updateStore={updateStore} />
               )}
