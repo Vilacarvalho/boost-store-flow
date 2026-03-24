@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, Store, Users, Target, CheckCircle2, ChevronLeft, ChevronRight, Loader2,
-  Plus, Trash2, Rocket,
+  Plus, Trash2, Rocket, Upload, X, Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
