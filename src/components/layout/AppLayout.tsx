@@ -181,12 +181,7 @@ const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
 
       <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border flex-col z-50">
         <div className="p-6">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">
-            VendaMais
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Gestão de Performance
-          </p>
+          <OrgLogo />
         </div>
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
           {navConfig.primary.map((item) => {
