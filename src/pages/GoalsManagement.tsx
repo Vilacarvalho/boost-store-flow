@@ -376,6 +376,14 @@ const GoalsManagement = () => {
             <DialogTitle>{form.id ? "Editar Meta" : "Nova Meta"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {existingGoalForPeriod && !form.id && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2">
+                <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-foreground">
+                  Já existe uma meta oficial ativa para este período e loja ({formatBRL(Number(existingGoalForPeriod.target_value))}). Salvar uma nova meta <strong>não substituirá</strong> a anterior automaticamente.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Valor da Meta (R$)</Label>
               <CurrencyInput
