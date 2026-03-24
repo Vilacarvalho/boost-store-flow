@@ -149,7 +149,7 @@ const GoalPerformance = () => {
   const endStr = end.toISOString().split("T")[0];
 
   useEffect(() => {
-    if (role !== "admin" && role !== "manager") return;
+    if (role !== "admin" && role !== "manager" && role !== "super_admin") return;
     const fetchStores = async () => {
       const { data } = await supabase.from("stores").select("id, name").eq("active", true);
       if (data) setStores(data);
@@ -170,7 +170,7 @@ const GoalPerformance = () => {
       await fetchUserPeriodBreakdown([{ id: user!.id, name: profile!.name, store_id: profile!.store_id }], profile!.store_id!);
     } else if (role === "manager") {
       await fetchStoreWithSellers(profile!.store_id!);
-    } else if (role === "admin") {
+    } else if (role === "admin" || role === "super_admin") {
       if (selectedStoreId === "all") {
         await fetchAllStores();
         setUserPeriodGoals([]);
@@ -183,33 +183,53 @@ const GoalPerformance = () => {
   };
 
   const findGoalValue = async (userId: string | null, storeId: string | null, periodStart: string): Promise<number> => {
-    // Priority 1: individual goal for this period
+    // Priority 1: individual goal for this period (by start_date/end_date range)
     if (userId) {
       const { data } = await supabase
         .from("goals")
-        .select("target_value")
+        .select("target_value, start_date, end_date, period_start")
         .eq("user_id", userId)
-        .gte("end_date", periodStart)
-        .lte("start_date", periodStart)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) return data.target_value;
+        .limit(10);
+
+      if (data) {
+        // Find goal where periodStart falls within [start_date, end_date]
+        const match = data.find(g => {
+          if (g.start_date && g.end_date) {
+            return g.start_date <= periodStart && g.end_date >= periodStart;
+          }
+          // Fallback: match by period_start month
+          if (g.period_start) {
+            return g.period_start.substring(0, 7) === periodStart.substring(0, 7);
+          }
+          return false;
+        });
+        if (match) return match.target_value;
+      }
     }
 
     // Priority 2: store goal
     if (storeId) {
       const { data } = await supabase
         .from("goals")
-        .select("target_value")
+        .select("target_value, start_date, end_date, period_start")
         .eq("store_id", storeId)
         .is("user_id", null)
-        .gte("end_date", periodStart)
-        .lte("start_date", periodStart)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data) return data.target_value;
+        .limit(10);
+
+      if (data) {
+        const match = data.find(g => {
+          if (g.start_date && g.end_date) {
+            return g.start_date <= periodStart && g.end_date >= periodStart;
+          }
+          if (g.period_start) {
+            return g.period_start.substring(0, 7) === periodStart.substring(0, 7);
+          }
+          return false;
+        });
+        if (match) return match.target_value;
+      }
     }
 
     return 0;
@@ -288,31 +308,8 @@ const GoalPerformance = () => {
   const fetchSellerPerformance = async () => {
     let goalValue = 0;
 
-    const { data: individualGoal } = await supabase
-      .from("goals")
-      .select("target_value")
-      .eq("user_id", user!.id)
-      .gte("end_date", startStr)
-      .lte("start_date", startStr)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (individualGoal) {
-      goalValue = individualGoal.target_value;
-    } else if (profile?.store_id) {
-      const { data: storeGoal } = await supabase
-        .from("goals")
-        .select("target_value")
-        .eq("store_id", profile.store_id)
-        .is("user_id", null)
-        .gte("end_date", startStr)
-        .lte("start_date", startStr)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (storeGoal) goalValue = storeGoal.target_value;
-    }
+    // Use the unified findGoalValue
+    goalValue = await findGoalValue(user!.id, profile?.store_id || null, startStr);
 
     const { data: sales } = await supabase
       .from("sales")
@@ -330,18 +327,7 @@ const GoalPerformance = () => {
   };
 
   const fetchStoreWithSellers = async (storeId: string) => {
-    const { data: storeGoal } = await supabase
-      .from("goals")
-      .select("target_value")
-      .eq("store_id", storeId)
-      .is("user_id", null)
-      .gte("end_date", startStr)
-      .lte("start_date", startStr)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const storeGoalValue = storeGoal?.target_value || 0;
+    const storeGoalValue = await findGoalValue(null, storeId, startStr);
 
     const { data: storeSales } = await supabase
       .from("sales")
@@ -392,27 +378,7 @@ const GoalPerformance = () => {
     const sellerPerfs: PerformanceData[] = [];
 
     for (const seller of sellers) {
-      const { data: sellerGoal } = await supabase
-        .from("goals")
-        .select("target_value")
-        .eq("user_id", seller.id)
-        .gte("end_date", startStr)
-        .lte("start_date", startStr)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const { data: sellerSales } = await supabase
-        .from("sales")
-        .select("total_value")
-        .eq("seller_id", seller.id)
-        .eq("store_id", storeId)
-        .eq("status", "won")
-        .gte("created_at", startStr)
-        .lte("created_at", endStr + "T23:59:59");
-
-      const realized = (sellerSales || []).reduce((sum, s) => sum + (s.total_value || 0), 0);
-      const goalVal = sellerGoal?.target_value || 0;
+      const goalVal = await findGoalValue(seller.id, storeId, startStr);
 
       sellerPerfs.push(buildPerformance(seller.id, seller.name, goalVal, realized));
     }
@@ -425,16 +391,7 @@ const GoalPerformance = () => {
     const perfs: PerformanceData[] = [];
 
     for (const store of stores) {
-      const { data: storeGoal } = await supabase
-        .from("goals")
-        .select("target_value")
-        .eq("store_id", store.id)
-        .is("user_id", null)
-        .gte("end_date", startStr)
-        .lte("start_date", startStr)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const storeGoalValue = await findGoalValue(null, store.id, startStr);
 
       const { data: storeSales } = await supabase
         .from("sales")
