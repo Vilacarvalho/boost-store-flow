@@ -36,6 +36,13 @@ const CompanySettingsDialog = ({ open, onOpenChange }: Props) => {
   const [primaryColor, setPrimaryColor] = useState("");
   const [secondaryColor, setSecondaryColor] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const initialSnapshot = useRef("");
+
+  const getCurrentSnapshot = () =>
+    JSON.stringify({ companyName, shortName, tagline, primaryColor, secondaryColor });
+
+  const isDirty = () => initialSnapshot.current && getCurrentSnapshot() !== initialSnapshot.current;
 
   // Sync form when dialog opens
   const handleOpenChange = (v: boolean) => {
@@ -45,10 +52,28 @@ const CompanySettingsDialog = ({ open, onOpenChange }: Props) => {
       setTagline(org.tagline || "");
       setPrimaryColor(org.primary_color || "");
       setSecondaryColor(org.secondary_color || "");
+      // Snapshot after next render
+      setTimeout(() => {
+        initialSnapshot.current = JSON.stringify({
+          companyName: org.name || "",
+          shortName: org.short_name || "",
+          tagline: org.tagline || "",
+          primaryColor: org.primary_color || "",
+          secondaryColor: org.secondary_color || "",
+        });
+      }, 0);
+    }
+    if (!v && isDirty()) {
+      setConfirmCloseOpen(true);
+      return;
     }
     onOpenChange(v);
   };
 
+  const forceClose = () => {
+    setConfirmCloseOpen(false);
+    onOpenChange(false);
+  };
   const handleLogoUpload = async (file: File) => {
     if (file.size > 2 * 1024 * 1024) { toast.error("Máximo: 2MB"); return; }
     if (!["image/png", "image/jpeg", "image/svg+xml"].includes(file.type)) { toast.error("Use PNG, JPG ou SVG"); return; }
