@@ -56,19 +56,55 @@ const NetworkSetup = () => {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
+  interface NetworkDraft {
+    step: number;
+    companyName: string;
+    stores: StoreEntry[];
+    team: TeamEntry[];
+    goals: GoalEntry[];
+  }
+
+  const draft = useFormDraft<NetworkDraft>({
+    key: "network-setup",
+    initialValues: { step: 0, companyName: "", stores: [{ name: "", city: "" }], team: [], goals: [] },
+    userId: profile?.id,
+  });
+
+  const [step, setStepRaw] = useState(draft.values.step);
+  const setStep = (s: number) => {
+    setStepRaw(s);
+    draft.setValues(prev => ({ ...prev, step: s }));
+  };
+
   // Step 1: Company
-  const [companyName, setCompanyName] = useState("");
+  const [companyName, setCompanyNameRaw] = useState(draft.values.companyName);
+  const setCompanyName = (v: string) => {
+    setCompanyNameRaw(v);
+    draft.setValues(prev => ({ ...prev, companyName: v }));
+  };
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Step 2: Stores
-  const [stores, setStores] = useState<StoreEntry[]>([{ name: "", city: "" }]);
+  const [stores, setStoresRaw] = useState<StoreEntry[]>(draft.values.stores);
+  const setStores = (s: StoreEntry[]) => {
+    setStoresRaw(s);
+    draft.setValues(prev => ({ ...prev, stores: s }));
+  };
 
   // Step 3: Team
-  const [team, setTeam] = useState<TeamEntry[]>([]);
+  const [team, setTeamRaw] = useState<TeamEntry[]>(draft.values.team);
+  const setTeam = (t: TeamEntry[]) => {
+    setTeamRaw(t);
+    draft.setValues(prev => ({ ...prev, team: t }));
+  };
 
   // Step 4: Goals
-  const [goals, setGoals] = useState<GoalEntry[]>([]);
+  const [goals, setGoalsRaw] = useState<GoalEntry[]>(draft.values.goals);
+  const setGoals = (g: GoalEntry[]) => {
+    setGoalsRaw(g);
+    draft.setValues(prev => ({ ...prev, goals: g }));
+  };
 
   const validStores = stores.filter((s) => s.name.trim().length > 0);
 
