@@ -272,14 +272,74 @@ const NetworkSetup = () => {
 
 /* ───── Step Components ───── */
 
-function StepCompany({ companyName, setCompanyName }: { companyName: string; setCompanyName: (v: string) => void }) {
+function StepCompany({
+  companyName,
+  setCompanyName,
+  logoFile,
+  setLogoFile,
+  logoPreview,
+  setLogoPreview,
+}: {
+  companyName: string;
+  setCompanyName: (v: string) => void;
+  logoFile: File | null;
+  setLogoFile: (f: File | null) => void;
+  logoPreview: string | null;
+  setLogoPreview: (v: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo: 2MB");
+      return;
+    }
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(file.type)) {
+      toast.error("Formato inválido. Use PNG, JPG ou SVG");
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const clearLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   return (
     <Card className="p-5 space-y-4">
       <h2 className="text-base font-semibold text-foreground">Dados da Empresa</h2>
-      <p className="text-sm text-muted-foreground">Atualize o nome da sua rede. Você pode pular se já estiver correto.</p>
+      <p className="text-sm text-muted-foreground">Atualize o nome e logo da sua rede.</p>
       <div className="space-y-2">
         <Label>Nome da empresa</Label>
         <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Ex: Ótica VilaCar" />
+      </div>
+      <div className="space-y-2">
+        <Label>Logo da empresa</Label>
+        {logoPreview ? (
+          <div className="flex items-center gap-3">
+            <img src={logoPreview} alt="Preview" className="h-10 w-auto max-w-[120px] rounded-lg object-contain border border-border" />
+            <Button variant="ghost" size="sm" onClick={clearLogo} className="text-destructive">
+              <X className="h-4 w-4 mr-1" /> Remover
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-6 hover:border-primary/50 hover:bg-accent/30 transition-colors"
+          >
+            <Upload className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Enviar logo (PNG, JPG, SVG — até 2MB)</span>
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleFileChange} />
       </div>
     </Card>
   );
