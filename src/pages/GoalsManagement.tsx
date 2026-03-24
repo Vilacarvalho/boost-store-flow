@@ -363,13 +363,24 @@ const GoalsManagement = () => {
             </TabsContent>
 
             <TabsContent value="calculadora">
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 mb-4 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-sm text-foreground">
-                  Esta calculadora apenas <strong>sugere valores</strong>. Nenhuma meta é salva automaticamente. Use o botão "Usar valor" para preencher o formulário e depois salve na aba <strong>Meta Oficial</strong>.
-                </p>
-              </div>
-              <GoalCalculator onUseSuggested={handleUseSuggested} />
+              {role !== "admin" && role !== "super_admin" ? (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-sm text-foreground">
+                    Apenas administradores podem utilizar a Calculadora de Metas.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-lg border border-warning/20 bg-warning/5 p-3 mb-4 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+                    <p className="text-sm text-foreground">
+                      Esta calculadora apenas <strong>sugere valores</strong>. Nenhuma meta é salva automaticamente. Use o botão "Usar valor" para preencher o formulário e depois salve na aba <strong>Meta Oficial</strong>.
+                    </p>
+                  </div>
+                  <GoalCalculator onUseSuggested={handleUseSuggested} />
+                </>
+              )}
             </TabsContent>
           </Tabs>
         </div>
