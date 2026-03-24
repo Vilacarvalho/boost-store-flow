@@ -1,6 +1,7 @@
 import { ReactNode, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import OrgLogo from "./OrgLogo";
+import { useDynamicFavicon } from "@/hooks/useDynamicFavicon";
 import {
   Home,
   Users,
@@ -114,6 +115,7 @@ const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role } = useAuth();
+  useDynamicFavicon();
 
   const resolvedRole = role ?? null;
   const navConfig = useMemo(() => {
