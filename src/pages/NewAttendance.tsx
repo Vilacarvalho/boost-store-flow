@@ -4,6 +4,10 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Check, X, Minus, Plus, User, Phone,
 } from "lucide-react";
+import { UnsavedChangesGuard } from "@/components/UnsavedChangesGuard";
+import { AutosaveIndicator } from "@/components/AutosaveIndicator";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
