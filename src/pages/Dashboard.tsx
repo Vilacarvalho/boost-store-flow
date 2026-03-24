@@ -10,6 +10,8 @@ import { formatBRL } from "@/lib/currency";
 import { useCulture } from "@/hooks/useCulture";
 import SellerGoalCards from "@/components/dashboard/SellerGoalCards";
 import SellerRankingTabs, { RankingEntry } from "@/components/dashboard/SellerRankingTabs";
+import QuickRankingSummary from "@/components/dashboard/QuickRankingSummary";
+import ContextualMessages from "@/components/dashboard/ContextualMessages";
 
 interface Metrics {
   total_sales: number;
