@@ -344,15 +344,25 @@ const GoalPlanner = () => {
 
   return (
     <AppLayout showFab={false}>
+      <UnsavedChangesGuard isDirty={draft.isDirty} />
       <div className="md:ml-64">
         <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+          {draft.wasRecovered && (
+            <DraftRecoveryBanner
+              onRestore={() => draft.dismissRecovery()}
+              onDiscard={() => draft.discardDraft()}
+            />
+          )}
           {/* Header */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
-            <Calculator className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Planejador de Metas</h1>
-              <p className="text-sm text-muted-foreground">Calcule e aplique metas inteligentes por loja</p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calculator className="h-6 w-6 text-primary" />
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">Planejador de Metas</h1>
+                <p className="text-sm text-muted-foreground">Calcule e aplique metas inteligentes por loja</p>
+              </div>
             </div>
+            <AutosaveIndicator isSaving={draft.isSaving} lastSaved={draft.lastSaved} isDirty={draft.isDirty} />
           </motion.div>
 
           {/* Filters & Inputs */}
