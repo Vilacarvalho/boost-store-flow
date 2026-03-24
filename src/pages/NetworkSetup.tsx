@@ -452,7 +452,7 @@ function StepGoals({ goals, setGoals }: { goals: GoalEntry[]; setGoals: (g: Goal
             </div>
             {g.target_value > 0 && (
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatCurrency(g.target_value)}
+                {formatBRL(g.target_value)}
               </span>
             )}
           </div>
@@ -521,7 +521,7 @@ function StepReview({
           <ul className="text-sm text-foreground space-y-0.5 mt-1">
             {goals.map((g) => (
               <li key={g.store_name}>
-                {g.store_name}: {formatCurrency(g.target_value)}/mês
+                {g.store_name}: {formatBRL(g.target_value)}/mês
               </li>
             ))}
           </ul>
