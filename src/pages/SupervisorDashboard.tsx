@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppLayout from "@/components/layout/AppLayout";
@@ -10,6 +10,7 @@ import SupervisorStoreRanking, { StoreRankingEntry } from "@/components/supervis
 import SupervisorStoreAlerts from "@/components/supervisor/SupervisorStoreAlerts";
 import SupervisorHighlights from "@/components/supervisor/SupervisorHighlights";
 import SupervisorPendingActions, { PendingAction } from "@/components/supervisor/SupervisorPendingActions";
+import StoreActionPlans, { CreateActionPayload } from "@/components/supervisor/StoreActionPlans";
 import { CalendarDays, BarChart3, ClipboardList } from "lucide-react";
 
 const fadeUp = {
@@ -39,8 +40,13 @@ const SupervisorDashboard = () => {
   const [monthlyStores, setMonthlyStores] = useState<StoreRankingEntry[]>([]);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [pendingChecklistCount, setPendingChecklistCount] = useState(0);
-  const [storesWithoutRecentVisit, setStoresWithoutRecentVisit] = useState<string[]>([]);
+  const [storesWithoutRecentVisit, setStoresWithoutRecentVisit] = useState<{ id: string; name: string }[]>([]);
+  const [storeList, setStoreList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionPlanRefreshKey, setActionPlanRefreshKey] = useState(0);
+
+  // Ref for action plan component to trigger create dialog
+  const actionPlanCreateRef = useRef<((payload: CreateActionPayload) => void) | null>(null);
 
   const today = fmt(new Date());
   const week = useMemo(getWeekRange, []);
@@ -55,36 +61,30 @@ const SupervisorDashboard = () => {
     try {
       const orgId = profile!.organization_id!;
 
-      // Get all active stores in org
-      const { data: storeList } = await supabase
+      const { data: stores } = await supabase
         .from("stores")
         .select("id, name")
         .eq("organization_id", orgId)
         .eq("active", true);
 
-      if (!storeList || storeList.length === 0) { setLoading(false); return; }
+      if (!stores || stores.length === 0) { setLoading(false); return; }
+      setStoreList(stores);
 
-      // Fetch metrics for all stores in parallel
       const [dailyMetrics, monthGoals, visitsRes, allActionsRes] = await Promise.all([
-        // Daily metrics per store
-        Promise.all(storeList.map(s => supabase.rpc("get_daily_metrics", { _store_id: s.id }))),
-        // Monthly goals per store
+        Promise.all(stores.map(s => supabase.rpc("get_daily_metrics", { _store_id: s.id }))),
         supabase.from("goals").select("store_id, target_value, current_value")
           .eq("organization_id", orgId).is("user_id", null)
           .eq("period_type", "monthly")
           .lte("start_date", month.start).gte("end_date", month.end),
-        // All visits for this supervisor
         supabase.from("store_visits").select("id, store_id, visit_date").order("visit_date", { ascending: false }),
-        // All pending actions
         supabase.from("visit_actions").select("id, visit_id, issue, action, responsible, due_date, status")
           .neq("status", "done"),
       ]);
 
-      // Weekly/monthly sales data per store
-      const weeklyMetrics = await Promise.all(storeList.map(s =>
+      const weeklyMetrics = await Promise.all(stores.map(s =>
         supabase.rpc("get_seller_ranking_period", { _store_id: s.id, _start_date: week.start, _end_date: week.end })
       ));
-      const monthlyMetrics = await Promise.all(storeList.map(s =>
+      const monthlyMetrics = await Promise.all(stores.map(s =>
         supabase.rpc("get_seller_ranking_period", { _store_id: s.id, _start_date: month.start, _end_date: month.end })
       ));
 
@@ -93,7 +93,6 @@ const SupervisorDashboard = () => {
         if (g.store_id) goalMap[g.store_id] = { target: g.target_value, current: g.current_value };
       });
 
-      // Build store entries for each period
       const buildEntry = (store: { id: string; name: string }, totalValue: number, wonSales: number, totalSales: number, convRate: number, avgTicket: number): StoreRankingEntry => {
         const goal = goalMap[store.id];
         return {
@@ -110,13 +109,11 @@ const SupervisorDashboard = () => {
         };
       };
 
-      // Daily
-      const daily: StoreRankingEntry[] = storeList.map((s, i) => {
+      const daily: StoreRankingEntry[] = stores.map((s, i) => {
         const m = dailyMetrics[i].data?.[0];
         return buildEntry(s, m?.total_value || 0, m?.won_sales || 0, m?.total_sales || 0, m?.conversion_rate || 0, m?.avg_ticket || 0);
       });
 
-      // Weekly - aggregate from seller ranking
       const aggregateFromRanking = (data: any[]) => {
         let tv = 0, wc = 0, tc = 0;
         (data || []).forEach((r: any) => { tv += Number(r.total_value); wc += Number(r.won_count); tc += Number(r.total_count); });
@@ -125,12 +122,12 @@ const SupervisorDashboard = () => {
         return { tv, wc, tc, conv, ticket };
       };
 
-      const wk: StoreRankingEntry[] = storeList.map((s, i) => {
+      const wk: StoreRankingEntry[] = stores.map((s, i) => {
         const agg = aggregateFromRanking(weeklyMetrics[i].data);
         return buildEntry(s, agg.tv, agg.wc, agg.tc, agg.conv, agg.ticket);
       });
 
-      const mo: StoreRankingEntry[] = storeList.map((s, i) => {
+      const mo: StoreRankingEntry[] = stores.map((s, i) => {
         const agg = aggregateFromRanking(monthlyMetrics[i].data);
         return buildEntry(s, agg.tv, agg.wc, agg.tc, agg.conv, agg.ticket);
       });
@@ -139,34 +136,28 @@ const SupervisorDashboard = () => {
       setWeeklyStores(wk);
       setMonthlyStores(mo);
 
-      // Pending actions - enrich with store names
+      // Visit pending actions
       const visitData = visitsRes.data || [];
       const visitMap: Record<string, { store_id: string; visit_date: string }> = {};
       visitData.forEach((v: any) => { visitMap[v.id] = { store_id: v.store_id, visit_date: v.visit_date }; });
-      const storeMap = Object.fromEntries(storeList.map(s => [s.id, s.name]));
+      const storeMap = Object.fromEntries(stores.map(s => [s.id, s.name]));
 
       const enrichedActions: PendingAction[] = (allActionsRes.data || []).map((a: any) => {
         const visit = visitMap[a.visit_id];
-        return {
-          ...a,
-          store_name: visit ? storeMap[visit.store_id] || "—" : "—",
-          visit_date: visit?.visit_date || "",
-        };
+        return { ...a, store_name: visit ? storeMap[visit.store_id] || "—" : "—", visit_date: visit?.visit_date || "" };
       }).filter((a: PendingAction) => a.store_name !== "—");
-
       setPendingActions(enrichedActions);
 
-      // Stores without recent visit (last 14 days)
+      // Stores without recent visit
       const recentCutoff = new Date();
       recentCutoff.setDate(recentCutoff.getDate() - 14);
       const recentCutoffStr = fmt(recentCutoff);
       const visitedStoreIds = new Set(
         visitData.filter((v: any) => v.visit_date >= recentCutoffStr).map((v: any) => v.store_id)
       );
-      const noVisit = storeList.filter(s => !visitedStoreIds.has(s.id)).map(s => s.name);
-      setStoresWithoutRecentVisit(noVisit);
+      setStoresWithoutRecentVisit(stores.filter(s => !visitedStoreIds.has(s.id)));
 
-      // Pending checklists - visits without checklist
+      // Pending checklists
       const visitIds = visitData.map((v: any) => v.id);
       if (visitIds.length > 0) {
         const { data: checklists } = await supabase
@@ -184,11 +175,15 @@ const SupervisorDashboard = () => {
     }
   };
 
-  // Network averages from monthly data
   const networkAvgConversion = monthlyStores.length > 0
     ? monthlyStores.reduce((s, st) => s + st.conversion_rate, 0) / monthlyStores.length : 0;
   const networkAvgTicket = monthlyStores.length > 0
     ? monthlyStores.filter(s => s.won_sales > 0).reduce((s, st) => s + st.avg_ticket, 0) / (monthlyStores.filter(s => s.won_sales > 0).length || 1) : 0;
+
+  const handleCreateFromAlert = (payload: CreateActionPayload) => {
+    // Trigger the StoreActionPlans dialog via a state update
+    actionPlanCreateRef.current?.(payload);
+  };
 
   if (loading) {
     return (
@@ -238,17 +233,26 @@ const SupervisorDashboard = () => {
                   networkAvgConversion={networkAvgConversion}
                   networkAvgTicket={networkAvgTicket}
                   storesWithoutRecentVisit={storesWithoutRecentVisit}
+                  onCreateAction={handleCreateFromAlert}
                 />
               </motion.div>
 
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
+                <StoreActionPlansWithRef
+                  stores={storeList}
+                  onCreateRef={actionPlanCreateRef}
+                  key={actionPlanRefreshKey}
+                />
+              </motion.div>
+
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
                 <SupervisorPendingActions
                   actions={pendingActions}
                   pendingChecklistCount={pendingChecklistCount}
                 />
               </motion.div>
 
-              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
                 <SupervisorStoreRanking
                   daily={dailyStores}
                   weekly={weeklyStores}
@@ -270,4 +274,69 @@ const SupervisorDashboard = () => {
   );
 };
 
+// Wrapper to expose create dialog trigger via ref
+import { useEffect as useEff, useState as useS, useRef as useR, forwardRef, useImperativeHandle } from "react";
+
+const StoreActionPlansWithRef = ({ stores, onCreateRef }: {
+  stores: { id: string; name: string }[];
+  onCreateRef: React.MutableRefObject<((payload: CreateActionPayload) => void) | null>;
+}) => {
+  const [pendingPayload, setPendingPayload] = useState<CreateActionPayload | null>(null);
+  const [triggerKey, setTriggerKey] = useState(0);
+
+  useEff(() => {
+    onCreateRef.current = (payload: CreateActionPayload) => {
+      setPendingPayload(payload);
+      setTriggerKey(k => k + 1);
+    };
+  }, [onCreateRef]);
+
+  return (
+    <StoreActionPlansTriggerable
+      stores={stores}
+      pendingPayload={pendingPayload}
+      triggerKey={triggerKey}
+      onPayloadConsumed={() => setPendingPayload(null)}
+    />
+  );
+};
+
+// This component wraps StoreActionPlans and can auto-open the dialog
+const StoreActionPlansTriggerable = ({ stores, pendingPayload, triggerKey, onPayloadConsumed }: {
+  stores: { id: string; name: string }[];
+  pendingPayload: CreateActionPayload | null;
+  triggerKey: number;
+  onPayloadConsumed: () => void;
+}) => {
+  const [dialogPayload, setDialogPayload] = useState<CreateActionPayload | undefined>();
+
+  useEff(() => {
+    if (pendingPayload && triggerKey > 0) {
+      setDialogPayload(pendingPayload);
+      onPayloadConsumed();
+    }
+  }, [triggerKey]);
+
+  return (
+    <StoreActionPlansDialog
+      stores={stores}
+      initialPayload={dialogPayload}
+      onDialogClose={() => setDialogPayload(undefined)}
+    />
+  );
+};
+
 export default SupervisorDashboard;
+
+// Inline enhanced action plans with dialog trigger support
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { Plus, ClipboardCheck, Clock, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
