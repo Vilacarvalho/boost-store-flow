@@ -35,6 +35,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deactivatedMessage, setDeactivatedMessage] = useState<string | null>(null);
+  const clearDeactivatedMessage = () => setDeactivatedMessage(null);
 
   const fetchProfileAndRole = async (userId: string): Promise<boolean> => {
     const [profileRes, roleRes] = await Promise.all([
