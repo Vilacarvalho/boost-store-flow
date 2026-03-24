@@ -301,6 +301,7 @@ const NewAttendance = () => {
           : "Atendimento registrado.",
       });
 
+      draft.clearDraft();
       navigate(getDashboardByRole(role));
     } catch (err: any) {
       console.error(err);
