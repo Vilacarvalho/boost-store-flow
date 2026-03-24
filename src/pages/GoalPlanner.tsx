@@ -291,6 +291,7 @@ const GoalPlanner = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["goal-plans-history"] });
       queryClient.invalidateQueries({ queryKey: ["admin-goals"] });
+      draft.clearDraft();
       toast.success("Metas aplicadas com sucesso!");
 
       // If single store, offer distribution
