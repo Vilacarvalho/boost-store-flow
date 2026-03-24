@@ -102,6 +102,7 @@ const MetricCard = ({ label, value, sub, icon: Icon, accent }: {
 
 const PerformanceBar = ({ data }: { data: PerformanceData }) => {
   const projPct = data.goal > 0 ? (data.projection / data.goal) * 100 : 0;
+  const gap = data.goal > 0 ? Math.max(0, data.goal - data.projection) : 0;
   return (
     <div className="bg-card rounded-2xl p-4 shadow-card space-y-3">
       <div className="flex items-center justify-between">
@@ -122,9 +123,15 @@ const PerformanceBar = ({ data }: { data: PerformanceData }) => {
           <p className={`font-medium tabular-nums ${projPct >= 100 ? "text-success" : projPct >= 80 ? "text-foreground" : "text-destructive"}`}>
             {formatBRL(data.projection)}
           </p>
-          <p>Projeção</p>
+          <p>Projeção (ritmo atual)</p>
         </div>
       </div>
+      {gap > 0 && data.goal > 0 && (
+        <div className="text-xs text-destructive/80 flex items-center gap-1 pt-1 border-t border-border">
+          <AlertTriangle className="h-3 w-3" />
+          <span>Déficit estimado: {formatBRL(gap)}</span>
+        </div>
+      )}
     </div>
   );
 };
@@ -529,18 +536,45 @@ const GoalPerformance = () => {
                     </p>
                   </div>
 
+                  {/* Projection detail */}
+                  {consolidated.goal > 0 && (() => {
+                    const gap = Math.max(0, consolidated.goal - consolidated.projection);
+                    const projPct = (consolidated.projection / consolidated.goal) * 100;
+                    return (
+                      <div className="bg-card rounded-2xl p-4 shadow-card space-y-2 mt-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Projeção de fechamento no ritmo atual
+                          </span>
+                          <TrendingUp className={`h-4 w-4 ${projPct >= 100 ? "text-success" : "text-destructive"}`} />
+                        </div>
+                        <p className={`text-2xl font-semibold tracking-tight tabular-nums ${projPct >= 100 ? "text-success" : projPct >= 80 ? "text-foreground" : "text-destructive"}`}>
+                          {formatBRL(consolidated.projection)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Estimativa baseada no ritmo atual de vendas ({projPct.toFixed(0)}% da meta)
+                        </p>
+                        {gap > 0 && (
+                          <div className="flex items-center gap-1.5 text-xs text-destructive/80 bg-destructive/5 rounded-lg px-3 py-2">
+                            <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>Déficit estimado: <strong>{formatBRL(gap)}</strong> — necessário aumentar o ritmo para atingir a meta</span>
+                          </div>
+                        )}
+                        {projPct >= 100 && (
+                          <div className="flex items-center gap-1.5 text-xs text-success bg-success/5 rounded-lg px-3 py-2">
+                            <TrendingUp className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span>No ritmo atual, a meta será superada!</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <MetricCard
-                      label="Projeção Final"
-                      value={formatBRL(consolidated.projection)}
-                      sub={`${consolidated.goal > 0 ? ((consolidated.projection / consolidated.goal) * 100).toFixed(0) : 0}% da meta`}
-                      icon={TrendingUp}
-                      accent
-                    />
-                    <MetricCard
-                      label="Restante"
+                      label="Restante p/ Meta"
                       value={formatBRL(consolidated.remaining)}
-                      sub={consolidated.remaining > 0 ? `${formatBRL(consolidated.neededPerDay)}/dia` : "Meta batida!"}
+                      sub={consolidated.remaining > 0 ? `${formatBRL(consolidated.neededPerDay)}/dia para bater` : "Meta batida! 🎉"}
                       icon={Target}
                     />
                     <MetricCard
