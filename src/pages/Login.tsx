@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, session, loading: authLoading } = useAuth();
+  const { signIn, signUp, session, loading: authLoading, deactivatedMessage, clearDeactivatedMessage } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
