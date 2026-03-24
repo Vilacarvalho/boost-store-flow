@@ -1,4 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { UnsavedChangesGuard } from "@/components/UnsavedChangesGuard";
+import { AutosaveIndicator } from "@/components/AutosaveIndicator";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -49,22 +53,58 @@ const STEPS = [
 const NetworkSetup = () => {
   const navigate = useNavigate();
   const { role, profile } = useAuth();
-  const [step, setStep] = useState(0);
+  // step state managed below with draft
   const [submitting, setSubmitting] = useState(false);
 
+  interface NetworkDraft {
+    step: number;
+    companyName: string;
+    stores: StoreEntry[];
+    team: TeamEntry[];
+    goals: GoalEntry[];
+  }
+
+  const draft = useFormDraft<NetworkDraft>({
+    key: "network-setup",
+    initialValues: { step: 0, companyName: "", stores: [{ name: "", city: "" }], team: [], goals: [] },
+    userId: profile?.id,
+  });
+
+  const [step, setStepRaw] = useState(draft.values.step);
+  const setStep = (s: number) => {
+    setStepRaw(s);
+    draft.setValues(prev => ({ ...prev, step: s }));
+  };
+
   // Step 1: Company
-  const [companyName, setCompanyName] = useState("");
+  const [companyName, setCompanyNameRaw] = useState(draft.values.companyName);
+  const setCompanyName = (v: string) => {
+    setCompanyNameRaw(v);
+    draft.setValues(prev => ({ ...prev, companyName: v }));
+  };
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Step 2: Stores
-  const [stores, setStores] = useState<StoreEntry[]>([{ name: "", city: "" }]);
+  const [stores, setStoresRaw] = useState<StoreEntry[]>(draft.values.stores);
+  const setStores = (s: StoreEntry[]) => {
+    setStoresRaw(s);
+    draft.setValues(prev => ({ ...prev, stores: s }));
+  };
 
   // Step 3: Team
-  const [team, setTeam] = useState<TeamEntry[]>([]);
+  const [team, setTeamRaw] = useState<TeamEntry[]>(draft.values.team);
+  const setTeam = (t: TeamEntry[]) => {
+    setTeamRaw(t);
+    draft.setValues(prev => ({ ...prev, team: t }));
+  };
 
   // Step 4: Goals
-  const [goals, setGoals] = useState<GoalEntry[]>([]);
+  const [goals, setGoalsRaw] = useState<GoalEntry[]>(draft.values.goals);
+  const setGoals = (g: GoalEntry[]) => {
+    setGoalsRaw(g);
+    draft.setValues(prev => ({ ...prev, goals: g }));
+  };
 
   const validStores = stores.filter((s) => s.name.trim().length > 0);
 
@@ -154,6 +194,7 @@ const NetworkSetup = () => {
         r.errors.forEach((e: string) => toast.warning(e));
       }
 
+      draft.clearDraft();
       navigate(getDashboardByRole(role));
     } catch (e: any) {
       toast.error(e.message || "Erro ao configurar rede");
@@ -161,12 +202,22 @@ const NetworkSetup = () => {
     setSubmitting(false);
   };
 
+  const hasDraftData = companyName.trim() || stores.some(s => s.name.trim()) || team.length > 0 || goals.some(g => g.target_value > 0);
+
   return (
     <AppLayout showFab={false}>
+      <UnsavedChangesGuard isDirty={hasDraftData && !submitting} />
       <div className="md:ml-64">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 pb-32">
+          {draft.wasRecovered && (
+            <DraftRecoveryBanner
+              onRestore={() => draft.dismissRecovery()}
+              onDiscard={() => draft.discardDraft()}
+            />
+          )}
           {/* Header */}
           <div className="text-center space-y-2">
+            <AutosaveIndicator isSaving={draft.isSaving} lastSaved={draft.lastSaved} isDirty={draft.isDirty} />
             <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary/10">
               <Rocket className="h-6 w-6 text-primary" />
             </div>

@@ -4,6 +4,10 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Check, X, Minus, Plus, User, Phone,
 } from "lucide-react";
+import { UnsavedChangesGuard } from "@/components/UnsavedChangesGuard";
+import { AutosaveIndicator } from "@/components/AutosaveIndicator";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
+import { useFormDraft } from "@/hooks/useFormDraft";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,15 +39,63 @@ const lossReasons = [
 
 /* ── component ───────────────────────────────────── */
 
+interface AttendanceDraft {
+  customerName: string;
+  customerPhone: string;
+  productType: string;
+  result: "won" | "lost" | "";
+  objectionReason: string;
+  objectionDescription: string;
+  notes: string;
+  productsCount: number;
+  totalValue: string;
+}
+
+const INITIAL_DRAFT: AttendanceDraft = {
+  customerName: "",
+  customerPhone: "",
+  productType: "",
+  result: "",
+  objectionReason: "",
+  objectionDescription: "",
+  notes: "",
+  productsCount: 1,
+  totalValue: "",
+};
+
 const NewAttendance = () => {
   const navigate = useNavigate();
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  // Customer (optional)
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  const draft = useFormDraft<AttendanceDraft>({
+    key: "new-attendance",
+    initialValues: INITIAL_DRAFT,
+    userId: user?.id,
+  });
+
+  // Derived state from draft
+  const customerName = draft.values.customerName;
+  const setCustomerName = (v: string) => draft.setValues(prev => ({ ...prev, customerName: v }));
+  const customerPhone = draft.values.customerPhone;
+  const setCustomerPhone = (v: string) => draft.setValues(prev => ({ ...prev, customerPhone: v }));
+  const productType = draft.values.productType;
+  const setProductType = (v: string) => draft.setValues(prev => ({ ...prev, productType: v }));
+  const result = draft.values.result;
+  const setResult = (v: "won" | "lost" | "") => draft.setValues(prev => ({ ...prev, result: v }));
+  const objectionReason = draft.values.objectionReason;
+  const setObjectionReason = (v: string) => draft.setValues(prev => ({ ...prev, objectionReason: v }));
+  const objectionDescription = draft.values.objectionDescription;
+  const setObjectionDescription = (v: string) => draft.setValues(prev => ({ ...prev, objectionDescription: v }));
+  const notes = draft.values.notes;
+  const setNotes = (v: string) => draft.setValues(prev => ({ ...prev, notes: v }));
+  const productsCount = draft.values.productsCount;
+  const setProductsCount = (v: number) => draft.setValues(prev => ({ ...prev, productsCount: v }));
+  const totalValue = draft.values.totalValue;
+  const setTotalValue = (v: string) => draft.setValues(prev => ({ ...prev, totalValue: v }));
+
+  // Customer matching state (not part of draft)
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
   const [matchedCustomerInfo, setMatchedCustomerInfo] = useState<{
     name: string; whatsapp: string | null; store_name?: string; last_sale_date?: string;
@@ -56,15 +108,6 @@ const NewAttendance = () => {
   const [nameSuggestions, setNameSuggestions] = useState<Array<{
     id: string; name: string; whatsapp: string | null;
   }>>([]);
-
-  // Attendance fields
-  const [productType, setProductType] = useState("");
-  const [result, setResult] = useState<"won" | "lost" | "">("");
-  const [objectionReason, setObjectionReason] = useState("");
-  const [objectionDescription, setObjectionDescription] = useState("");
-  const [notes, setNotes] = useState("");
-  const [productsCount, setProductsCount] = useState(1);
-  const [totalValue, setTotalValue] = useState("");
 
   // Smart prompt
   const [phoneError, setPhoneError] = useState("");
@@ -258,6 +301,7 @@ const NewAttendance = () => {
           : "Atendimento registrado.",
       });
 
+      draft.clearDraft();
       navigate(getDashboardByRole(role));
     } catch (err: any) {
       console.error(err);
@@ -271,6 +315,7 @@ const NewAttendance = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <UnsavedChangesGuard isDirty={draft.isDirty} />
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="flex items-center h-14 px-4 max-w-lg mx-auto">
@@ -278,6 +323,7 @@ const NewAttendance = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-sm font-semibold text-foreground flex-1">Novo Atendimento</h1>
+          <AutosaveIndicator isSaving={draft.isSaving} lastSaved={draft.lastSaved} isDirty={draft.isDirty} />
           <button onClick={() => navigate(getDashboardByRole(role))} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
@@ -285,7 +331,13 @@ const NewAttendance = () => {
       </header>
 
       {/* Content */}
-      <div className="flex-1 px-4 py-6 max-w-lg mx-auto w-full">
+      <div className="flex-1 px-4 py-6 max-w-lg mx-auto w-full space-y-4">
+        {draft.wasRecovered && (
+          <DraftRecoveryBanner
+            onRestore={() => draft.dismissRecovery()}
+            onDiscard={() => draft.discardDraft()}
+          />
+        )}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
