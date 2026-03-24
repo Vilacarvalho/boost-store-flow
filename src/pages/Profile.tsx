@@ -19,13 +19,49 @@ const Profile = () => {
   const navigate = useNavigate();
   const { profile, role, signOut, user } = useAuth();
   const { data: culture } = useCulture();
+  const { data: org } = useOrganization();
+  const queryClient = useQueryClient();
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editPassOpen, setEditPassOpen] = useState(false);
+  const [editLogoOpen, setEditLogoOpen] = useState(false);
   const [name, setName] = useState(profile?.name || "");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
-
   const [nameError, setNameError] = useState("");
+  const logoFileRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo: 2MB"); return; }
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(file.type)) { toast.error("Use PNG, JPG ou SVG"); return; }
+    if (!profile?.organization_id) return;
+    setSaving(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${profile.organization_id}/logo.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("org-logos").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("org-logos").getPublicUrl(path);
+      const { error: updateErr } = await supabase.from("organizations").update({ logo_url: urlData.publicUrl } as any).eq("id", profile.organization_id);
+      if (updateErr) throw updateErr;
+      queryClient.invalidateQueries({ queryKey: ["organization"] });
+      toast.success("Logo atualizada!");
+      setEditLogoOpen(false);
+    } catch (e: any) { toast.error(e.message); }
+    setSaving(false);
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!profile?.organization_id) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("organizations").update({ logo_url: null } as any).eq("id", profile.organization_id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["organization"] });
+      toast.success("Logo removida!");
+      setEditLogoOpen(false);
+    } catch (e: any) { toast.error(e.message); }
+    setSaving(false);
+  };
 
   const roleLabels: Record<string, string> = { super_admin: "Super Admin", admin: "Administrador", manager: "Gerente", seller: "Vendedor", supervisor: "Supervisor" };
 
