@@ -202,12 +202,22 @@ const NetworkSetup = () => {
     setSubmitting(false);
   };
 
+  const hasDraftData = companyName.trim() || stores.some(s => s.name.trim()) || team.length > 0 || goals.some(g => g.target_value > 0);
+
   return (
     <AppLayout showFab={false}>
+      <UnsavedChangesGuard isDirty={hasDraftData && !submitting} />
       <div className="md:ml-64">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-6 pb-32">
+          {draft.wasRecovered && (
+            <DraftRecoveryBanner
+              onRestore={() => draft.dismissRecovery()}
+              onDiscard={() => draft.discardDraft()}
+            />
+          )}
           {/* Header */}
           <div className="text-center space-y-2">
+            <AutosaveIndicator isSaving={draft.isSaving} lastSaved={draft.lastSaved} isDirty={draft.isDirty} />
             <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary/10">
               <Rocket className="h-6 w-6 text-primary" />
             </div>
