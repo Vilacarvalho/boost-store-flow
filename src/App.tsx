@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,7 +19,7 @@ import Profile from "./pages/Profile.tsx";
 import StoresManagement from "./pages/StoresManagement.tsx";
 import UsersManagement from "./pages/UsersManagement.tsx";
 import GoalsManagement from "./pages/GoalsManagement.tsx";
-import GoalPlanner from "./pages/GoalPlanner.tsx";
+
 import GoalPerformance from "./pages/GoalPerformance.tsx";
 import ConversionAnalysis from "./pages/ConversionAnalysis.tsx";
 import ContentCenter from "./pages/ContentCenter.tsx";
@@ -131,11 +131,7 @@ const App = () => (
             />
             <Route
               path="/goal-planner"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
-                  <GoalPlanner />
-                </ProtectedRoute>
-              }
+              element={<Navigate to="/goals" replace />}
             />
             <Route
               path="/goal-performance"
