@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { validateName, normalizeName } from "@/lib/validation";
-import { formatCurrency } from "@/lib/currency";
+import { formatBRL } from "@/lib/currency";
 import { getDashboardByRole } from "@/lib/roleRedirect";
 
 interface StoreEntry {
