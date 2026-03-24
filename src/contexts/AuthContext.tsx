@@ -19,6 +19,8 @@ interface AuthContextType {
   profile: UserProfile | null;
   role: AppRole | null;
   loading: boolean;
+  deactivatedMessage: string | null;
+  clearDeactivatedMessage: () => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
