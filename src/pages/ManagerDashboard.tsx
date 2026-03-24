@@ -9,6 +9,7 @@ import SellerRankingTabs, { RankingEntry } from "@/components/dashboard/SellerRa
 import StoreProjection from "@/components/manager/StoreProjection";
 import TeamHighlights from "@/components/manager/TeamHighlights";
 import TeamAlerts from "@/components/manager/TeamAlerts";
+import StoreActionPlans from "@/components/supervisor/StoreActionPlans";
 
 interface Metrics {
   total_sales: number;
@@ -183,6 +184,15 @@ const ManagerDashboard = () => {
               monthly={monthlyRanking}
               currentUserId={user?.id || ""}
               goalAchievement={goalAchievement}
+            />
+          </motion.div>
+
+          {/* Action Plans for this store (read-only) */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.18 }}>
+            <StoreActionPlans
+              stores={[{ id: profile?.store_id || "", name: "" }]}
+              readOnly
+              storeFilter={profile?.store_id || ""}
             />
           </motion.div>
 
