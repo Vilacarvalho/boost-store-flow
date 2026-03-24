@@ -104,6 +104,7 @@ const Profile = () => {
   ];
 
   const adminItems = [
+    { label: "Logo da Empresa", icon: Image, onClick: () => setEditLogoOpen(true) },
     { label: "Lojas", icon: Store, onClick: () => navigate("/stores") },
     { label: "Usuários", icon: Users, onClick: () => navigate("/users") },
     { label: "Metas da Rede", icon: Target, onClick: () => navigate("/goals") },
