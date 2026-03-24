@@ -44,21 +44,35 @@ export function useFormDraft<T>({
 }: UseFormDraftOptions<T>): UseFormDraftReturn<T> {
   const storageKey = getDraftKey(key, userId);
   const initialRef = useRef(initialValues);
-  const [wasRecovered, setWasRecovered] = useState(false);
-
   // Try to load draft on mount
   const [values, setValues] = useState<T>(() => {
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed?.data) {
-          setWasRecovered(true);
-          return parsed.data as T;
+        if (parsed?.data && typeof parsed.data === "object") {
+          // Merge with initial values to ensure all keys exist (handles schema changes)
+          const merged = { ...initialValues, ...parsed.data };
+          return merged as T;
         }
       }
-    } catch {}
+    } catch {
+      // Corrupted draft - remove it
+      try { localStorage.removeItem(storageKey); } catch {}
+    }
     return initialValues;
+  });
+
+  // Detect recovery separately (avoid calling setState inside useState initializer)
+  const [wasRecovered, setWasRecovered] = useState(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return !!(parsed?.data && typeof parsed.data === "object");
+      }
+    } catch {}
+    return false;
   });
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
