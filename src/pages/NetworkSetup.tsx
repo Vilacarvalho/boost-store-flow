@@ -114,12 +114,28 @@ const NetworkSetup = () => {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      // Upload logo first if present
+      let logoUrl: string | undefined;
+      if (logoFile && profile?.organization_id) {
+        const ext = logoFile.name.split(".").pop() || "png";
+        const path = `${profile.organization_id}/logo.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("org-logos")
+          .upload(path, logoFile, { upsert: true });
+        if (uploadErr) throw new Error(`Erro ao enviar logo: ${uploadErr.message}`);
+        const { data: urlData } = supabase.storage.from("org-logos").getPublicUrl(path);
+        logoUrl = urlData.publicUrl;
+      }
+
       const payload: any = {
         stores: validStores,
         team: team.filter((t) => t.name.trim() && t.email.trim()),
         goals: goals.filter((g) => g.target_value > 0),
       };
       if (companyName.trim()) payload.company = { name: companyName.trim() };
+      if (logoUrl) {
+        payload.company = { ...(payload.company || {}), logo_url: logoUrl };
+      }
 
       const res = await supabase.functions.invoke("setup-network", { body: payload });
       if (res.error) throw new Error(res.error.message);
