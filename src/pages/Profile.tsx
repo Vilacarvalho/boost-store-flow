@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2, Heart, Eye } from "lucide-react";
+import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2, Heart, Eye, Image, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,19 +11,57 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCulture } from "@/hooks/useCulture";
+import { useOrganization } from "@/hooks/useOrganization";
 import { validateName, normalizeName } from "@/lib/validation";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Profile = () => {
   const navigate = useNavigate();
   const { profile, role, signOut, user } = useAuth();
   const { data: culture } = useCulture();
+  const { data: org } = useOrganization();
+  const queryClient = useQueryClient();
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editPassOpen, setEditPassOpen] = useState(false);
+  const [editLogoOpen, setEditLogoOpen] = useState(false);
   const [name, setName] = useState(profile?.name || "");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
-
   const [nameError, setNameError] = useState("");
+  const logoFileRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024) { toast.error("Arquivo muito grande. Máximo: 2MB"); return; }
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(file.type)) { toast.error("Use PNG, JPG ou SVG"); return; }
+    if (!profile?.organization_id) return;
+    setSaving(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${profile.organization_id}/logo.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("org-logos").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("org-logos").getPublicUrl(path);
+      const { error: updateErr } = await supabase.from("organizations").update({ logo_url: urlData.publicUrl } as any).eq("id", profile.organization_id);
+      if (updateErr) throw updateErr;
+      queryClient.invalidateQueries({ queryKey: ["organization"] });
+      toast.success("Logo atualizada!");
+      setEditLogoOpen(false);
+    } catch (e: any) { toast.error(e.message); }
+    setSaving(false);
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!profile?.organization_id) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("organizations").update({ logo_url: null } as any).eq("id", profile.organization_id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["organization"] });
+      toast.success("Logo removida!");
+      setEditLogoOpen(false);
+    } catch (e: any) { toast.error(e.message); }
+    setSaving(false);
+  };
 
   const roleLabels: Record<string, string> = { super_admin: "Super Admin", admin: "Administrador", manager: "Gerente", seller: "Vendedor", supervisor: "Supervisor" };
 
@@ -66,6 +104,7 @@ const Profile = () => {
   ];
 
   const adminItems = [
+    { label: "Logo da Empresa", icon: Image, onClick: () => setEditLogoOpen(true) },
     { label: "Lojas", icon: Store, onClick: () => navigate("/stores") },
     { label: "Usuários", icon: Users, onClick: () => navigate("/users") },
     { label: "Metas da Rede", icon: Target, onClick: () => navigate("/goals") },
@@ -207,6 +246,47 @@ const Profile = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditPassOpen(false)}>Cancelar</Button>
             <Button onClick={handleSavePassword} disabled={password.length < 6 || saving}>{saving ? "Salvando..." : "Salvar"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Logo Dialog */}
+      <Dialog open={editLogoOpen} onOpenChange={setEditLogoOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Logo da Empresa</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {org?.logo_url ? (
+              <div className="flex flex-col items-center gap-3">
+                <img src={org.logo_url} alt="Logo" className="h-16 w-auto max-w-[200px] rounded-lg object-contain border border-border" />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => logoFileRef.current?.click()} disabled={saving}>
+                    <Upload className="h-4 w-4 mr-1" /> Substituir
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleRemoveLogo} disabled={saving} className="text-destructive">
+                    <X className="h-4 w-4 mr-1" /> Remover
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => logoFileRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-8 hover:border-primary/50 hover:bg-accent/30 transition-colors"
+              >
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Enviar logo (PNG, JPG, SVG — até 2MB)</span>
+              </button>
+            )}
+            <input
+              ref={logoFileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditLogoOpen(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

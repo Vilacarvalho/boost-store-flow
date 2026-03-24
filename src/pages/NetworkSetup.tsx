@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2, Store, Users, Target, CheckCircle2, ChevronLeft, ChevronRight, Loader2,
-  Plus, Trash2, Rocket,
+  Plus, Trash2, Rocket, Upload, X, Image,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,8 @@ const NetworkSetup = () => {
 
   // Step 1: Company
   const [companyName, setCompanyName] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Step 2: Stores
   const [stores, setStores] = useState<StoreEntry[]>([{ name: "", city: "" }]);
@@ -112,12 +114,28 @@ const NetworkSetup = () => {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      // Upload logo first if present
+      let logoUrl: string | undefined;
+      if (logoFile && profile?.organization_id) {
+        const ext = logoFile.name.split(".").pop() || "png";
+        const path = `${profile.organization_id}/logo.${ext}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("org-logos")
+          .upload(path, logoFile, { upsert: true });
+        if (uploadErr) throw new Error(`Erro ao enviar logo: ${uploadErr.message}`);
+        const { data: urlData } = supabase.storage.from("org-logos").getPublicUrl(path);
+        logoUrl = urlData.publicUrl;
+      }
+
       const payload: any = {
         stores: validStores,
         team: team.filter((t) => t.name.trim() && t.email.trim()),
         goals: goals.filter((g) => g.target_value > 0),
       };
       if (companyName.trim()) payload.company = { name: companyName.trim() };
+      if (logoUrl) {
+        payload.company = { ...(payload.company || {}), logo_url: logoUrl };
+      }
 
       const res = await supabase.functions.invoke("setup-network", { body: payload });
       if (res.error) throw new Error(res.error.message);
@@ -189,7 +207,16 @@ const NetworkSetup = () => {
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
             >
-              {step === 0 && <StepCompany companyName={companyName} setCompanyName={setCompanyName} />}
+              {step === 0 && (
+                <StepCompany
+                  companyName={companyName}
+                  setCompanyName={setCompanyName}
+                  logoFile={logoFile}
+                  setLogoFile={setLogoFile}
+                  logoPreview={logoPreview}
+                  setLogoPreview={setLogoPreview}
+                />
+              )}
               {step === 1 && (
                 <StepStores stores={stores} addStore={addStore} removeStore={removeStore} updateStore={updateStore} />
               )}
@@ -245,14 +272,74 @@ const NetworkSetup = () => {
 
 /* ───── Step Components ───── */
 
-function StepCompany({ companyName, setCompanyName }: { companyName: string; setCompanyName: (v: string) => void }) {
+function StepCompany({
+  companyName,
+  setCompanyName,
+  logoFile,
+  setLogoFile,
+  logoPreview,
+  setLogoPreview,
+}: {
+  companyName: string;
+  setCompanyName: (v: string) => void;
+  logoFile: File | null;
+  setLogoFile: (f: File | null) => void;
+  logoPreview: string | null;
+  setLogoPreview: (v: string | null) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo: 2MB");
+      return;
+    }
+    if (!["image/png", "image/jpeg", "image/svg+xml"].includes(file.type)) {
+      toast.error("Formato inválido. Use PNG, JPG ou SVG");
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const clearLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   return (
     <Card className="p-5 space-y-4">
       <h2 className="text-base font-semibold text-foreground">Dados da Empresa</h2>
-      <p className="text-sm text-muted-foreground">Atualize o nome da sua rede. Você pode pular se já estiver correto.</p>
+      <p className="text-sm text-muted-foreground">Atualize o nome e logo da sua rede.</p>
       <div className="space-y-2">
         <Label>Nome da empresa</Label>
         <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Ex: Ótica VilaCar" />
+      </div>
+      <div className="space-y-2">
+        <Label>Logo da empresa</Label>
+        {logoPreview ? (
+          <div className="flex items-center gap-3">
+            <img src={logoPreview} alt="Preview" className="h-10 w-auto max-w-[120px] rounded-lg object-contain border border-border" />
+            <Button variant="ghost" size="sm" onClick={clearLogo} className="text-destructive">
+              <X className="h-4 w-4 mr-1" /> Remover
+            </Button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-6 hover:border-primary/50 hover:bg-accent/30 transition-colors"
+          >
+            <Upload className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Enviar logo (PNG, JPG, SVG — até 2MB)</span>
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleFileChange} />
       </div>
     </Card>
   );

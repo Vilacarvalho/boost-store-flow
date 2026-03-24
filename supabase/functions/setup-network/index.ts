@@ -52,11 +52,14 @@ Deno.serve(async (req) => {
       errors: [] as string[],
     }
 
-    // Step 1: Update organization name if provided
-    if (company?.name) {
+    // Step 1: Update organization name/logo if provided
+    if (company?.name || company?.logo_url) {
+      const updateData: any = {}
+      if (company.name) updateData.name = company.name
+      if (company.logo_url) updateData.logo_url = company.logo_url
       const { error } = await adminClient
         .from('organizations')
-        .update({ name: company.name })
+        .update(updateData)
         .eq('id', orgId)
       if (error) {
         results.errors.push(`Erro ao atualizar organização: ${error.message}`)
