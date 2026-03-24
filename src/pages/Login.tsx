@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, session, loading: authLoading } = useAuth();
+  const { signIn, signUp, session, loading: authLoading, deactivatedMessage, clearDeactivatedMessage } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,6 +18,13 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  useEffect(() => {
+    if (deactivatedMessage) {
+      toast({ title: "Acesso desativado", description: deactivatedMessage, variant: "destructive" });
+      clearDeactivatedMessage();
+    }
+  }, [deactivatedMessage, toast, clearDeactivatedMessage]);
 
   useEffect(() => {
     if (authLoading || !session) return;

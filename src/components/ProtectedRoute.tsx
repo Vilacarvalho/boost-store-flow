@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { ReactNode, useEffect } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppRole, getDashboardByRole } from "@/lib/roleRedirect";
 
@@ -9,7 +9,14 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { session, role, loading } = useAuth();
+  const { session, role, loading, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && session && profile && !profile.active) {
+      signOut().then(() => navigate("/login", { replace: true }));
+    }
+  }, [loading, session, profile, signOut, navigate]);
 
   if (loading || (session && allowedRoles && !role)) {
     return (
@@ -20,6 +27,10 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (!session) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (profile && !profile.active) {
     return <Navigate to="/login" replace />;
   }
 

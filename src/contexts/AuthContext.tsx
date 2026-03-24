@@ -19,6 +19,8 @@ interface AuthContextType {
   profile: UserProfile | null;
   role: AppRole | null;
   loading: boolean;
+  deactivatedMessage: string | null;
+  clearDeactivatedMessage: () => void;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -33,15 +35,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deactivatedMessage, setDeactivatedMessage] = useState<string | null>(null);
+  const clearDeactivatedMessage = () => setDeactivatedMessage(null);
 
-  const fetchProfileAndRole = async (userId: string) => {
+  const fetchProfileAndRole = async (userId: string): Promise<boolean> => {
     const [profileRes, roleRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
     ]);
 
-    setProfile(profileRes.data ? (profileRes.data as UserProfile) : null);
+    const prof = profileRes.data ? (profileRes.data as UserProfile) : null;
+
+    if (prof && !prof.active) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setRole(null);
+      setDeactivatedMessage("Seu acesso está desativado. Procure o administrador.");
+      return false;
+    }
+
+    setProfile(prof);
     setRole(roleRes.data ? (roleRes.data.role as AppRole) : null);
+    return true;
   };
 
   const refreshProfile = async () => {
@@ -119,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, role, loading, signIn, signUp, signOut, refreshProfile }}
+      value={{ session, user, profile, role, loading, deactivatedMessage, clearDeactivatedMessage, signIn, signUp, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
