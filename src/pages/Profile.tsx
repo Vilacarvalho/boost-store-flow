@@ -249,6 +249,47 @@ const Profile = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Logo Dialog */}
+      <Dialog open={editLogoOpen} onOpenChange={setEditLogoOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Logo da Empresa</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {org?.logo_url ? (
+              <div className="flex flex-col items-center gap-3">
+                <img src={org.logo_url} alt="Logo" className="h-16 w-auto max-w-[200px] rounded-lg object-contain border border-border" />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => logoFileRef.current?.click()} disabled={saving}>
+                    <Upload className="h-4 w-4 mr-1" /> Substituir
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleRemoveLogo} disabled={saving} className="text-destructive">
+                    <X className="h-4 w-4 mr-1" /> Remover
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => logoFileRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-8 hover:border-primary/50 hover:bg-accent/30 transition-colors"
+              >
+                <Upload className="h-6 w-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Enviar logo (PNG, JPG, SVG — até 2MB)</span>
+              </button>
+            )}
+            <input
+              ref={logoFileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditLogoOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };
