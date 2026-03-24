@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
@@ -109,9 +109,11 @@ const extractFunctionPayload = async (response?: Response): Promise<CreateUserFu
 const UsersManagement = () => {
   const { profile, role: myRole, user, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpenRaw] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const initialFormRef = useRef<string>("");
   const [form, setForm] = useState<UserFormState>({
     id: "",
     name: "",
@@ -121,6 +123,21 @@ const UsersManagement = () => {
     store_id: "",
     manager_can_sell: false,
   });
+
+  const isFormDirty = () => JSON.stringify(form) !== initialFormRef.current;
+
+  const setDialogOpen = (open: boolean) => {
+    if (!open && isFormDirty()) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    setDialogOpenRaw(open);
+  };
+
+  const forceCloseDialog = () => {
+    setConfirmCloseOpen(false);
+    setDialogOpenRaw(false);
+  };
 
   const { data: stores = [] } = useQuery({
     queryKey: ["admin-stores"],
@@ -319,16 +336,18 @@ const UsersManagement = () => {
 
   const openCreate = () => {
     setIsCreating(true);
-    setForm({
+    const newForm = {
       id: "",
       name: "",
       email: "",
       password: "",
-      role: "seller",
+      role: "seller" as AppRole,
       store_id: stores[0]?.id || "",
       manager_can_sell: false,
-    });
-    setDialogOpen(true);
+    };
+    setForm(newForm);
+    initialFormRef.current = JSON.stringify(newForm);
+    setDialogOpenRaw(true);
   };
 
   const openEdit = (selectedUser: UserWithRole) => {
@@ -336,7 +355,7 @@ const UsersManagement = () => {
     const resolvedStoreId = selectedUser.store_id && validStoreIds.has(selectedUser.store_id) ? selectedUser.store_id : "";
 
     setIsCreating(false);
-    setForm({
+    const editForm = {
       id: selectedUser.id,
       name: selectedUser.name,
       email: selectedUser.email,
@@ -344,8 +363,10 @@ const UsersManagement = () => {
       role: resolvedRole,
       store_id: resolvedRole === "manager" || resolvedRole === "seller" ? resolvedStoreId : "",
       manager_can_sell: selectedUser.manager_can_sell ?? false,
-    });
-    setDialogOpen(true);
+    };
+    setForm(editForm);
+    initialFormRef.current = JSON.stringify(editForm);
+    setDialogOpenRaw(true);
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending || reactivateMutation.isPending;
@@ -614,6 +635,24 @@ const UsersManagement = () => {
               onClick={() => reactivateMutation.mutate()}
             >
               {reactivateMutation.isPending ? "Reativando..." : "Reativar Usuário"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm close with unsaved changes */}
+      <AlertDialog open={confirmCloseOpen} onOpenChange={setConfirmCloseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterações não salvas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações não salvas. Deseja sair mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={forceCloseDialog}>
+              Sair sem salvar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
