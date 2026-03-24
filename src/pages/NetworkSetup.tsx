@@ -194,6 +194,7 @@ const NetworkSetup = () => {
         r.errors.forEach((e: string) => toast.warning(e));
       }
 
+      draft.clearDraft();
       navigate(getDashboardByRole(role));
     } catch (e: any) {
       toast.error(e.message || "Erro ao configurar rede");
