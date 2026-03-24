@@ -13,9 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { parseBRL, formatBRL, numberToBRLInput } from "@/lib/currency";
 import { toast } from "sonner";
 import DistributionDialog from "@/components/goal-planner/DistributionDialog";
+import GoalCalculator from "@/components/goals/GoalCalculator";
 
 const periodLabels: Record<string, string> = { daily: "Diário", weekly: "Semanal", monthly: "Mensal" };
 
@@ -59,6 +61,7 @@ const GoalsManagement = () => {
   const { profile, role } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("oficial");
   const [form, setForm] = useState({
     id: "",
     target_value: "",
@@ -69,7 +72,6 @@ const GoalsManagement = () => {
     end_date: "",
   });
 
-  // Distribution dialog
   const [distDialog, setDistDialog] = useState<{
     open: boolean;
     storeId: string;
@@ -142,7 +144,6 @@ const GoalsManagement = () => {
       setDialogOpen(false);
       toast.success(form.id ? "Meta atualizada!" : "Meta criada!");
 
-      // Offer distribution if it's a new store-level goal (no user_id)
       if (result.isNew && result.payload.store_id && !result.payload.user_id) {
         const storeName = storeMap.get(result.payload.store_id) || "Loja";
         setDistDialog({
@@ -202,104 +203,138 @@ const GoalsManagement = () => {
     setForm({ ...form, period_type: v, start_date: dates.start, end_date: dates.end });
   };
 
+  const handleUseSuggested = (storeId: string, _storeName: string, value: number) => {
+    const dates = getDefaultDates("monthly");
+    setForm({
+      id: "",
+      target_value: numberToBRLInput(value),
+      period_type: "monthly",
+      store_id: storeId,
+      user_id: NONE_VALUE,
+      start_date: dates.start,
+      end_date: dates.end,
+    });
+    setActiveTab("oficial");
+    setDialogOpen(true);
+    toast.info("Valor sugerido preenchido no formulário. Revise e salve.");
+  };
+
   const filteredUsers = users.filter((u) => !form.store_id || u.store_id === form.store_id);
   const canEdit = role === "admin" || role === "manager" || role === "super_admin";
 
   return (
     <AppLayout showFab={false}>
       <div className="md:ml-64">
-        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Target className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-semibold tracking-tight text-foreground">Metas</h1>
             </div>
-            {canEdit && (
+            {canEdit && activeTab === "oficial" && (
               <Button onClick={openCreate} size="sm">
                 <Plus className="h-4 w-4 mr-1" /> Nova Meta
               </Button>
             )}
           </motion.div>
 
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border overflow-hidden bg-card">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Período</TableHead>
-                    <TableHead>Loja</TableHead>
-                    <TableHead>Usuário</TableHead>
-                    <TableHead className="text-right">Meta (R$)</TableHead>
-                    <TableHead className="text-right">Atual (R$)</TableHead>
-                    <TableHead>Datas</TableHead>
-                    {canEdit && <TableHead className="w-32" />}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {goals.map((g) => (
-                    <TableRow key={g.id}>
-                      <TableCell>
-                        <Badge variant="outline">{periodLabels[g.period_type] || g.period_type}</Badge>
-                      </TableCell>
-                      <TableCell>{g.store_id ? storeMap.get(g.store_id) || "—" : "Rede"}</TableCell>
-                      <TableCell>{g.user_id ? userMap.get(g.user_id) || "—" : "Todos"}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatBRL(Number(g.target_value))}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatBRL(Number(g.current_value))}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {g.start_date && g.end_date
-                          ? `${new Date(g.start_date + "T12:00:00").toLocaleDateString("pt-BR")} — ${new Date(g.end_date + "T12:00:00").toLocaleDateString("pt-BR")}`
-                          : "—"}
-                      </TableCell>
-                      {canEdit && (
-                        <TableCell className="flex gap-1 justify-end">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(g)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          {/* Distribute button for store goals without user */}
-                          {g.store_id && !g.user_id && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Distribuir para vendedores"
-                              onClick={() => setDistDialog({
-                                open: true,
-                                storeId: g.store_id!,
-                                storeName: storeMap.get(g.store_id!) || "Loja",
-                                goalValue: Number(g.target_value),
-                                goalId: g.id,
-                              })}
-                            >
-                              <Users className="h-4 w-4" />
-                            </Button>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="oficial">Meta Oficial</TabsTrigger>
+              <TabsTrigger value="calculadora">Calculadora</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="oficial">
+              {isLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden bg-card">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Período</TableHead>
+                        <TableHead>Loja</TableHead>
+                        <TableHead>Usuário</TableHead>
+                        <TableHead className="text-right">Meta (R$)</TableHead>
+                        <TableHead className="text-right">Atual (R$)</TableHead>
+                        <TableHead>Datas</TableHead>
+                        <TableHead>Origem</TableHead>
+                        {canEdit && <TableHead className="w-32" />}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {goals.map((g) => (
+                        <TableRow key={g.id}>
+                          <TableCell>
+                            <Badge variant="outline">{periodLabels[g.period_type] || g.period_type}</Badge>
+                          </TableCell>
+                          <TableCell>{g.store_id ? storeMap.get(g.store_id) || "—" : "Rede"}</TableCell>
+                          <TableCell>{g.user_id ? userMap.get(g.user_id) || "—" : "Todos"}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatBRL(Number(g.target_value))}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatBRL(Number(g.current_value))}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {g.start_date && g.end_date
+                              ? `${new Date(g.start_date + "T12:00:00").toLocaleDateString("pt-BR")} — ${new Date(g.end_date + "T12:00:00").toLocaleDateString("pt-BR")}`
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {g.source === "planner" ? "Planejador" : "Manual"}
+                            </Badge>
+                          </TableCell>
+                          {canEdit && (
+                            <TableCell className="flex gap-1 justify-end">
+                              <Button variant="ghost" size="icon" onClick={() => openEdit(g)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              {g.store_id && !g.user_id && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Distribuir para vendedores"
+                                  onClick={() => setDistDialog({
+                                    open: true,
+                                    storeId: g.store_id!,
+                                    storeName: storeMap.get(g.store_id!) || "Loja",
+                                    goalValue: Number(g.target_value),
+                                    goalId: g.id,
+                                  })}
+                                >
+                                  <Users className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(role === "admin" || role === "super_admin") && (
+                                <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(g.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </TableCell>
                           )}
-                          {(role === "admin" || role === "super_admin") && (
-                            <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(g.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          )}
-                        </TableCell>
+                        </TableRow>
+                      ))}
+                      {goals.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                            Nenhuma meta cadastrada
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </TableRow>
-                  ))}
-                  {goals.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                        Nenhuma meta cadastrada
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="calculadora">
+              <GoalCalculator onUseSuggested={handleUseSuggested} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
@@ -365,13 +400,12 @@ const GoalsManagement = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={!form.target_value || saveMutation.isPending}>
-              {saveMutation.isPending ? "Salvando..." : "Salvar"}
+              {saveMutation.isPending ? "Salvando..." : "Salvar Meta"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Distribution Dialog */}
       {distDialog && (
         <DistributionDialog
           open={distDialog.open}
