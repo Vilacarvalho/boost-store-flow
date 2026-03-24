@@ -54,6 +54,8 @@ const NetworkSetup = () => {
 
   // Step 1: Company
   const [companyName, setCompanyName] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // Step 2: Stores
   const [stores, setStores] = useState<StoreEntry[]>([{ name: "", city: "" }]);
