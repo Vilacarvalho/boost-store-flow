@@ -111,9 +111,9 @@ const GoalsManagement = () => {
       const numericValue = parseBRL(form.target_value);
       if (numericValue <= 0) throw new Error("Valor da meta deve ser maior que zero.");
 
-      const dates = form.start_date && form.end_date
-        ? { start_date: form.start_date, end_date: form.end_date }
-        : getDefaultDates(form.period_type);
+      const defaultDates = getDefaultDates(form.period_type);
+      const startDate = form.start_date || defaultDates.start;
+      const endDate = form.end_date || defaultDates.end;
 
       const payload = {
         target_value: numericValue,
@@ -121,9 +121,9 @@ const GoalsManagement = () => {
         store_id: form.store_id || null,
         user_id: form.user_id && form.user_id !== NONE_VALUE ? form.user_id : null,
         organization_id: profile!.organization_id!,
-        start_date: dates.start_date ?? dates.start,
-        end_date: dates.end_date ?? dates.end,
-        period_start: dates.start_date ?? dates.start,
+        start_date: startDate,
+        end_date: endDate,
+        period_start: startDate,
         source: "manual",
       };
 
