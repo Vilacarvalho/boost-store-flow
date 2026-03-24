@@ -323,6 +323,7 @@ const NewAttendance = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-sm font-semibold text-foreground flex-1">Novo Atendimento</h1>
+          <AutosaveIndicator isSaving={draft.isSaving} lastSaved={draft.lastSaved} isDirty={draft.isDirty} />
           <button onClick={() => navigate(getDashboardByRole(role))} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
