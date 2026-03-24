@@ -331,7 +331,13 @@ const NewAttendance = () => {
       </header>
 
       {/* Content */}
-      <div className="flex-1 px-4 py-6 max-w-lg mx-auto w-full">
+      <div className="flex-1 px-4 py-6 max-w-lg mx-auto w-full space-y-4">
+        {draft.wasRecovered && (
+          <DraftRecoveryBanner
+            onRestore={() => draft.dismissRecovery()}
+            onDiscard={() => draft.discardDraft()}
+          />
+        )}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
