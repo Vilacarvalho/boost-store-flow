@@ -565,7 +565,7 @@ const GoalPerformance = () => {
           {performanceData.length > 0 && (role !== "seller" || performanceData.length > 1) && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }} className="space-y-3">
               <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {role === "admin" && selectedStoreId === "all" ? "Por Loja" : "Por Vendedor"}
+                {(role === "admin" || role === "super_admin") && selectedStoreId === "all" ? "Por Loja" : "Por Vendedor"}
               </h2>
               <div className="space-y-2">
                 {performanceData.map((d, i) => (
