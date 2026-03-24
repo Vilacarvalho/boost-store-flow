@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Target, Plus, Pencil, Trash2, Users } from "lucide-react";
+import { Target, Plus, Pencil, Trash2, Users, Calculator, CheckCircle2, AlertTriangle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
@@ -216,8 +216,18 @@ const GoalsManagement = () => {
     });
     setActiveTab("oficial");
     setDialogOpen(true);
-    toast.info("Valor sugerido preenchido no formulário. Revise e salve.");
+    toast.info("Valor sugerido aplicado ao formulário. Salve a Meta Oficial para confirmar.", { duration: 5000 });
   };
+
+  const existingGoalForPeriod = goals.find(
+    (g) =>
+      g.store_id === form.store_id &&
+      !g.user_id &&
+      g.period_type === form.period_type &&
+      g.start_date === form.start_date &&
+      g.end_date === form.end_date &&
+      g.id !== form.id
+  );
 
   const filteredUsers = users.filter((u) => !form.store_id || u.store_id === form.store_id);
   const canEdit = role === "admin" || role === "manager" || role === "super_admin";
@@ -240,11 +250,23 @@ const GoalsManagement = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-              <TabsTrigger value="oficial">Meta Oficial</TabsTrigger>
-              <TabsTrigger value="calculadora">Calculadora</TabsTrigger>
+              <TabsTrigger value="oficial" className="gap-1.5">
+                <Target className="h-3.5 w-3.5" />
+                Meta Oficial
+              </TabsTrigger>
+              <TabsTrigger value="calculadora" className="gap-1.5">
+                <Calculator className="h-3.5 w-3.5" />
+                Calculadora
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="oficial">
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 mb-4 flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-foreground">
+                  As metas listadas abaixo são <strong>oficiais e ativas</strong>. Elas alimentam dashboards, rankings e performance.
+                </p>
+              </div>
               {isLoading ? (
                 <div className="flex justify-center py-12">
                   <div className="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -261,6 +283,7 @@ const GoalsManagement = () => {
                         <TableHead className="text-right">Atual (R$)</TableHead>
                         <TableHead>Datas</TableHead>
                         <TableHead>Origem</TableHead>
+                        <TableHead>Atualizado</TableHead>
                         {canEdit && <TableHead className="w-32" />}
                       </TableRow>
                     </TableHeader>
@@ -287,6 +310,9 @@ const GoalsManagement = () => {
                             <Badge variant="secondary" className="text-xs">
                               {g.source === "planner" ? "Planejador" : "Manual"}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(g.created_at).toLocaleDateString("pt-BR")}
                           </TableCell>
                           {canEdit && (
                             <TableCell className="flex gap-1 justify-end">
@@ -320,7 +346,7 @@ const GoalsManagement = () => {
                       ))}
                       {goals.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                             Nenhuma meta cadastrada
                           </TableCell>
                         </TableRow>
@@ -332,6 +358,12 @@ const GoalsManagement = () => {
             </TabsContent>
 
             <TabsContent value="calculadora">
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 mb-4 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-sm text-foreground">
+                  Esta calculadora apenas <strong>sugere valores</strong>. Nenhuma meta é salva automaticamente. Use o botão "Usar valor" para preencher o formulário e depois salve na aba <strong>Meta Oficial</strong>.
+                </p>
+              </div>
               <GoalCalculator onUseSuggested={handleUseSuggested} />
             </TabsContent>
           </Tabs>
