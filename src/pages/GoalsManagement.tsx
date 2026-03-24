@@ -248,16 +248,21 @@ const GoalsManagement = () => {
             )}
           </motion.div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={(v) => {
+            if (v === "calculadora" && role !== "admin" && role !== "super_admin") return;
+            setActiveTab(v);
+          }}>
             <TabsList>
               <TabsTrigger value="oficial" className="gap-1.5">
                 <Target className="h-3.5 w-3.5" />
                 Meta Oficial
               </TabsTrigger>
-              <TabsTrigger value="calculadora" className="gap-1.5">
-                <Calculator className="h-3.5 w-3.5" />
-                Calculadora
-              </TabsTrigger>
+              {(role === "admin" || role === "super_admin") && (
+                <TabsTrigger value="calculadora" className="gap-1.5">
+                  <Calculator className="h-3.5 w-3.5" />
+                  Calculadora
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="oficial">
