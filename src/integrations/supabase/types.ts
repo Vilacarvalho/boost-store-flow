@@ -570,18 +570,30 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          primary_color: string | null
+          secondary_color: string | null
+          short_name: string | null
+          tagline: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           logo_url?: string | null
           name: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          short_name?: string | null
+          tagline?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           logo_url?: string | null
           name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+          short_name?: string | null
+          tagline?: string | null
         }
         Relationships: []
       }
