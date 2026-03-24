@@ -10,7 +10,7 @@ import {
   Plus,
   Store,
   Target,
-  Calculator,
+  
   BarChart3,
   PieChart,
   BookOpen,
@@ -39,7 +39,6 @@ const roleNavigation: Record<AppRole, { primary: NavItem[]; secondary: NavItem[]
     ],
     secondary: [
       { path: "/goals", icon: Target, label: "Metas" },
-      { path: "/goal-planner", icon: Calculator, label: "Planejador" },
       { path: "/goal-performance", icon: BarChart3, label: "Performance" },
       { path: "/conversion-analysis", icon: PieChart, label: "Conversão" },
       { path: "/content-center", icon: BookOpen, label: "Conteúdo" },
@@ -56,7 +55,6 @@ const roleNavigation: Record<AppRole, { primary: NavItem[]; secondary: NavItem[]
     ],
     secondary: [
       { path: "/goals", icon: Target, label: "Metas" },
-      { path: "/goal-planner", icon: Calculator, label: "Planejador" },
       { path: "/goal-performance", icon: BarChart3, label: "Performance" },
       { path: "/conversion-analysis", icon: PieChart, label: "Conversão" },
       { path: "/content-center", icon: BookOpen, label: "Conteúdo" },
