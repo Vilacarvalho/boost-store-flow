@@ -12,7 +12,13 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Plus, ClipboardCheck, Clock, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 
-export interface ActionPlan {
+export interface CreateActionPayload {
+  storeId?: string;
+  issue?: string;
+  source?: string;
+}
+
+interface ActionPlan {
   id: string;
   store_id: string;
   store_name?: string;
@@ -25,28 +31,22 @@ export interface ActionPlan {
   created_at: string;
 }
 
-export interface CreateActionPayload {
-  storeId?: string;
-  storeName?: string;
-  issue?: string;
-  source?: string;
-}
-
 interface Props {
   stores: { id: string; name: string }[];
-  onRefresh?: () => void;
   readOnly?: boolean;
   storeFilter?: string;
+  /** Increment to trigger the create dialog with a payload */
+  externalTrigger?: number;
+  externalPayload?: CreateActionPayload;
 }
 
-const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: Props) => {
+const StoreActionPlans = ({ stores, readOnly = false, storeFilter, externalTrigger, externalPayload }: Props) => {
   const { user, profile } = useAuth();
   const [plans, setPlans] = useState<ActionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Form state
   const [formStoreId, setFormStoreId] = useState("");
   const [formIssue, setFormIssue] = useState("");
   const [formAction, setFormAction] = useState("");
@@ -58,6 +58,19 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
     if (profile?.organization_id) loadPlans();
   }, [profile?.organization_id]);
 
+  // Handle external trigger from alerts
+  useEffect(() => {
+    if (externalTrigger && externalTrigger > 0 && externalPayload) {
+      setFormStoreId(externalPayload.storeId || "");
+      setFormIssue(externalPayload.issue || "");
+      setFormAction("");
+      setFormResponsible("");
+      setFormDueDate("");
+      setFormSource(externalPayload.source || "");
+      setDialogOpen(true);
+    }
+  }, [externalTrigger]);
+
   const loadPlans = async () => {
     let query = supabase
       .from("store_action_plans")
@@ -65,25 +78,21 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
       .eq("organization_id", profile!.organization_id!)
       .order("created_at", { ascending: false });
 
-    if (storeFilter) {
-      query = query.eq("store_id", storeFilter);
-    }
+    if (storeFilter) query = query.eq("store_id", storeFilter);
 
     const { data } = await query;
     const storeMap = Object.fromEntries(stores.map(s => [s.id, s.name]));
-    setPlans(
-      (data || []).map((p: any) => ({ ...p, store_name: storeMap[p.store_id] || "—" }))
-    );
+    setPlans((data || []).map((p: any) => ({ ...p, store_name: storeMap[p.store_id] || "—" })));
     setLoading(false);
   };
 
-  const openCreateDialog = (payload?: CreateActionPayload) => {
-    setFormStoreId(payload?.storeId || "");
-    setFormIssue(payload?.issue || "");
+  const openCreate = () => {
+    setFormStoreId("");
+    setFormIssue("");
     setFormAction("");
     setFormResponsible("");
     setFormDueDate("");
-    setFormSource(payload?.source || "");
+    setFormSource("");
     setDialogOpen(true);
   };
 
@@ -104,7 +113,6 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
       status: "open",
       source: formSource || null,
     });
-
     setSaving(false);
     if (error) {
       console.error("Action plan insert error:", error);
@@ -114,26 +122,18 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
     toast.success("Plano de ação criado");
     setDialogOpen(false);
     loadPlans();
-    onRefresh?.();
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase
-      .from("store_action_plans")
-      .update({ status })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Erro ao atualizar status");
-    } else {
-      loadPlans();
-    }
+    const { error } = await supabase.from("store_action_plans").update({ status }).eq("id", id);
+    if (error) toast.error("Erro ao atualizar status");
+    else loadPlans();
   };
 
   const today = new Date().toISOString().split("T")[0];
   const overdue = plans.filter(p => p.status !== "done" && p.due_date && p.due_date < today);
+  const inProgress = plans.filter(p => p.status === "in_progress" && (!p.due_date || p.due_date >= today));
   const open = plans.filter(p => p.status === "open" && (!p.due_date || p.due_date >= today));
-  const inProgress = plans.filter(p => p.status === "in_progress");
   const recentDone = plans.filter(p => p.status === "done").slice(0, 5);
 
   const statusIcon = (s: string) => {
@@ -148,22 +148,19 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
     return "Aberto";
   };
 
-  const renderPlanItem = (p: ActionPlan, isOverdue = false) => (
-    <div
-      key={p.id}
-      className={`rounded-lg px-3 py-2.5 space-y-1.5 ${isOverdue ? "bg-destructive/10" : "bg-muted/30"}`}
-    >
+  const renderItem = (p: ActionPlan, isOverdue = false) => (
+    <div key={p.id} className={`rounded-lg px-3 py-2.5 space-y-1.5 ${isOverdue ? "bg-destructive/10" : "bg-muted/30"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-medium text-foreground truncate">{p.store_name}</p>
-            {isOverdue && <Badge variant="destructive" className="text-[10px] shrink-0">Atrasada</Badge>}
-            {p.source && <Badge variant="outline" className="text-[10px] shrink-0">{p.source}</Badge>}
+            {isOverdue && <Badge variant="destructive" className="text-[10px]">Atrasada</Badge>}
+            {p.source && <Badge variant="outline" className="text-[10px]">{p.source}</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">{p.issue}</p>
           <p className="text-xs text-foreground/80 mt-0.5">→ {p.action}</p>
         </div>
-        {!readOnly && (
+        {!readOnly ? (
           <Select value={p.status} onValueChange={(val) => updateStatus(p.id, val)}>
             <SelectTrigger className="h-7 w-[130px] text-xs shrink-0">
               <SelectValue />
@@ -174,8 +171,7 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
               <SelectItem value="done">Concluído</SelectItem>
             </SelectContent>
           </Select>
-        )}
-        {readOnly && (
+        ) : (
           <div className="flex items-center gap-1 shrink-0">
             {statusIcon(p.status)}
             <span className="text-xs text-muted-foreground">{statusLabel(p.status)}</span>
@@ -199,6 +195,8 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
     );
   }
 
+  const totalPending = overdue.length + open.length + inProgress.length;
+
   return (
     <>
       <Card>
@@ -207,14 +205,14 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
             <CardTitle className="text-base flex items-center gap-2">
               <ClipboardCheck className="h-4 w-4 text-primary" />
               Planos de Ação
-              {(overdue.length + open.length + inProgress.length) > 0 && (
+              {totalPending > 0 && (
                 <span className="text-xs font-normal text-muted-foreground">
-                  ({overdue.length + open.length + inProgress.length} pendente{(overdue.length + open.length + inProgress.length) > 1 ? "s" : ""})
+                  ({totalPending} pendente{totalPending > 1 ? "s" : ""})
                 </span>
               )}
             </CardTitle>
             {!readOnly && (
-              <Button size="sm" variant="outline" onClick={() => openCreateDialog()}>
+              <Button size="sm" variant="outline" onClick={openCreate}>
                 <Plus className="h-4 w-4 mr-1" /> Novo
               </Button>
             )}
@@ -226,34 +224,32 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
           )}
         </CardHeader>
         <CardContent className="space-y-3">
-          {overdue.length === 0 && open.length === 0 && inProgress.length === 0 && recentDone.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              Nenhum plano de ação registrado.
-            </p>
+          {totalPending === 0 && recentDone.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum plano de ação registrado.</p>
           ) : (
             <>
               {overdue.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-destructive">Atrasadas</p>
-                  {overdue.map(p => renderPlanItem(p, true))}
+                  {overdue.map(p => renderItem(p, true))}
                 </div>
               )}
               {inProgress.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">Em andamento</p>
-                  {inProgress.map(p => renderPlanItem(p))}
+                  {inProgress.map(p => renderItem(p))}
                 </div>
               )}
               {open.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">Abertas</p>
-                  {open.map(p => renderPlanItem(p))}
+                  {open.map(p => renderItem(p))}
                 </div>
               )}
               {recentDone.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground">Concluídas recentemente</p>
-                  {recentDone.map(p => renderPlanItem(p))}
+                  {recentDone.map(p => renderItem(p))}
                 </div>
               )}
             </>
@@ -277,28 +273,10 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
                 ))}
               </SelectContent>
             </Select>
-
-            <Textarea
-              placeholder="Problema identificado"
-              value={formIssue}
-              onChange={(e) => setFormIssue(e.target.value)}
-            />
-            <Textarea
-              placeholder="Ação proposta"
-              value={formAction}
-              onChange={(e) => setFormAction(e.target.value)}
-            />
-            <Input
-              placeholder="Responsável"
-              value={formResponsible}
-              onChange={(e) => setFormResponsible(e.target.value)}
-            />
-            <Input
-              type="date"
-              value={formDueDate}
-              onChange={(e) => setFormDueDate(e.target.value)}
-            />
-
+            <Textarea placeholder="Problema identificado" value={formIssue} onChange={(e) => setFormIssue(e.target.value)} />
+            <Textarea placeholder="Ação proposta" value={formAction} onChange={(e) => setFormAction(e.target.value)} />
+            <Input placeholder="Responsável" value={formResponsible} onChange={(e) => setFormResponsible(e.target.value)} />
+            <Input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} />
             <Button className="w-full" onClick={handleCreate} disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Criar Plano de Ação
@@ -310,5 +288,4 @@ const StoreActionPlans = ({ stores, onRefresh, readOnly = false, storeFilter }: 
   );
 };
 
-export { StoreActionPlans, type CreateActionPayload };
 export default StoreActionPlans;
