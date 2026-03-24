@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import {
-  TrendingUp, Target, ShoppingCart, BarChart3, AlertTriangle, Trophy,
-} from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { ShoppingCart, BarChart3, TrendingUp } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/currency";
+import SellerRankingTabs, { RankingEntry } from "@/components/dashboard/SellerRankingTabs";
+import StoreProjection from "@/components/manager/StoreProjection";
+import TeamHighlights from "@/components/manager/TeamHighlights";
+import TeamAlerts from "@/components/manager/TeamAlerts";
 
 interface Metrics {
   total_sales: number;
@@ -19,106 +20,88 @@ interface Metrics {
   avg_pa: number;
 }
 
-interface RankingEntry {
-  seller_id: string;
-  seller_name: string;
-  total_value: number;
-  won_count: number;
-  total_count: number;
-  conversion_rate: number;
-  avg_pa: number;
-}
-
-interface LostSale {
-  customer_name: string;
-  objection_reason: string;
-  created_at: string;
-}
-
 const fadeUp = {
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.2, ease: [0.25, 0.1, 0.25, 1] },
 };
 
+function fmt(d: Date) { return d.toISOString().split("T")[0]; }
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  const mon = new Date(now); mon.setDate(now.getDate() - diff);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  return { start: fmt(mon), end: fmt(sun) };
+}
+function getMonthRange() {
+  const now = new Date();
+  return { start: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), end: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+}
+
 const ManagerDashboard = () => {
   const { profile, user } = useAuth();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [ranking, setRanking] = useState<RankingEntry[]>([]);
-  const [lostSales, setLostSales] = useState<LostSale[]>([]);
+  const [dailyRanking, setDailyRanking] = useState<RankingEntry[]>([]);
+  const [weeklyRanking, setWeeklyRanking] = useState<RankingEntry[]>([]);
+  const [monthlyRanking, setMonthlyRanking] = useState<RankingEntry[]>([]);
   const [goalTarget, setGoalTarget] = useState(0);
   const [goalCurrent, setGoalCurrent] = useState(0);
+  const [goalAchievement, setGoalAchievement] = useState<Record<string, { pct: number }>>({});
   const [loading, setLoading] = useState(true);
 
+  const today = fmt(new Date());
+  const week = useMemo(getWeekRange, []);
+  const month = useMemo(getMonthRange, []);
+
   useEffect(() => {
-    if (!user || !profile?.store_id) {
-      setLoading(false);
-      return;
-    }
+    if (!user || !profile?.store_id) { setLoading(false); return; }
     loadData();
   }, [profile?.store_id, user]);
 
   const loadData = async () => {
-    try {
-      const storeId = profile!.store_id!;
-      const today = new Date().toISOString().split("T")[0];
+    const storeId = profile!.store_id!;
 
-      const [metricsRes, rankingRes, lostRes, goalRes] = await Promise.all([
-        supabase.rpc("get_daily_metrics", { _store_id: storeId }),
-        supabase.rpc("get_seller_ranking", { _store_id: storeId }),
-        supabase
-          .from("sales")
-          .select("objection_reason, created_at, customers(name)")
-          .eq("store_id", storeId)
-          .eq("status", "lost")
-          .gte("created_at", today)
-          .order("created_at", { ascending: false })
-          .limit(5),
-        supabase
-          .from("goals")
-          .select("target_value, current_value")
-          .eq("store_id", storeId)
-          .is("user_id", null)
-          .eq("period_type", "monthly")
-          .order("period_start", { ascending: false })
-          .limit(1),
-      ]);
+    const [metricsRes, dailyRes, weeklyRes, monthlyRes, goalRes] = await Promise.all([
+      supabase.rpc("get_daily_metrics", { _store_id: storeId }),
+      supabase.rpc("get_seller_ranking", { _store_id: storeId }),
+      supabase.rpc("get_seller_ranking_period", { _store_id: storeId, _start_date: week.start, _end_date: week.end }),
+      supabase.rpc("get_seller_ranking_period", { _store_id: storeId, _start_date: month.start, _end_date: month.end }),
+      supabase.from("goals").select("target_value, current_value").eq("store_id", storeId).is("user_id", null).eq("period_type", "monthly").lte("start_date", month.start).gte("end_date", month.end).order("created_at", { ascending: false }).limit(1),
+    ]);
 
-      if (metricsRes.data?.[0]) {
-        setMetrics(metricsRes.data[0] as Metrics);
-      } else {
-        setMetrics({ total_sales: 0, won_sales: 0, total_value: 0, avg_ticket: 0, conversion_rate: 0, total_attendances: 0, avg_pa: 0 });
-      }
+    if (metricsRes.data?.[0]) setMetrics(metricsRes.data[0] as Metrics);
+    else setMetrics({ total_sales: 0, won_sales: 0, total_value: 0, avg_ticket: 0, conversion_rate: 0, total_attendances: 0, avg_pa: 0 });
 
-      if (rankingRes.data) setRanking(rankingRes.data as RankingEntry[]);
+    if (dailyRes.data) setDailyRanking(dailyRes.data as RankingEntry[]);
+    if (weeklyRes.data) setWeeklyRanking(weeklyRes.data as RankingEntry[]);
+    if (monthlyRes.data) setMonthlyRanking(monthlyRes.data as RankingEntry[]);
 
-      if (lostRes.data) {
-        setLostSales(lostRes.data.map((s: any) => ({
-          customer_name: s.customers?.name || "Cliente",
-          objection_reason: s.objection_reason || "Não informado",
-          created_at: s.created_at,
-        })));
-      }
+    const goal = goalRes.data?.[0];
+    if (goal) { setGoalTarget(goal.target_value); setGoalCurrent(goal.current_value); }
 
-      const goal = goalRes.data?.[0];
-      if (goal) {
-        setGoalTarget(goal.target_value);
-        setGoalCurrent(goal.current_value);
-      }
-    } catch (err) {
-      console.error("Error loading manager dashboard:", err);
-    } finally {
-      setLoading(false);
+    // Goal achievement for ranking
+    if (monthlyRes.data && goal) {
+      const { data: allGoals } = await supabase.from("goals").select("user_id, target_value").eq("store_id", storeId).eq("period_type", "monthly").lte("start_date", month.start).gte("end_date", month.end).not("user_id", "is", null);
+      const goalMap: Record<string, number> = {};
+      (allGoals || []).forEach((g: any) => { goalMap[g.user_id] = g.target_value; });
+      const achievement: Record<string, { pct: number }> = {};
+      (monthlyRes.data as RankingEntry[]).forEach((s) => {
+        const g = goalMap[s.seller_id] || goal.target_value;
+        achievement[s.seller_id] = { pct: g > 0 ? (s.total_value / g) * 100 : 0 };
+      });
+      setGoalAchievement(achievement);
     }
+
+    setLoading(false);
   };
 
-  const goalProgress = goalTarget > 0 ? (goalCurrent / goalTarget) * 100 : 0;
-
-  // Projection
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const dayElapsed = now.getDate();
-  const projectedValue = dayElapsed > 0 ? (goalCurrent / dayElapsed) * daysInMonth : 0;
+  // Compute store averages for alerts
+  const storeAvgConversion = dailyRanking.length > 0 ? dailyRanking.reduce((s, r) => s + r.conversion_rate, 0) / dailyRanking.length : 0;
+  const storeAvgTicket = dailyRanking.length > 0 ? dailyRanking.reduce((s, r) => s + (r.avg_ticket || 0), 0) / dailyRanking.length : 0;
+  const eligibleCount = dailyRanking.length || 1;
+  const dailyGoalPerSeller = goalTarget > 0 ? goalTarget / 22 / eligibleCount : 0;
 
   if (loading) {
     return (
@@ -136,142 +119,72 @@ const ManagerDashboard = () => {
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
           {/* Header */}
           <motion.div {...fadeUp} className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-              Painel do Gerente
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Desempenho da sua loja hoje
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Painel do Gerente</h1>
+            <p className="text-sm text-muted-foreground">Desempenho da sua loja hoje</p>
           </motion.div>
 
-          {/* Store Goal Progress */}
-          {goalTarget > 0 && (
-            <motion.div
-              {...fadeUp}
-              transition={{ ...fadeUp.transition, delay: 0.05 }}
-              className="bg-card rounded-2xl p-5 shadow-card space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Meta da Loja (Mensal)
-                </span>
-                <Target className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
-                  {formatBRL(goalCurrent)}
-                </span>
-                <span className="text-sm text-muted-foreground tabular-nums">
-                  / {formatBRL(goalTarget)}
-                </span>
-              </div>
-              <Progress value={Math.min(goalProgress, 100)} className="h-2 rounded-full" />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{goalProgress.toFixed(0)}% atingido</span>
-                <span>Projeção: {formatBRL(projectedValue)}</span>
-              </div>
-            </motion.div>
-          )}
+          {/* Store Projection */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
+            <StoreProjection goalTarget={goalTarget} goalCurrent={goalCurrent} />
+          </motion.div>
 
           {/* KPI Grid */}
-          <motion.div
-            {...fadeUp}
-            transition={{ ...fadeUp.transition, delay: 0.1 }}
-            className="grid grid-cols-2 gap-3"
-          >
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }} className="grid grid-cols-2 gap-3">
             <div className="bg-card rounded-2xl p-4 shadow-card space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Faturamento</span>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
-                {formatBRL(metrics?.total_value || 0)}
-              </p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{formatBRL(metrics?.total_value || 0)}</p>
             </div>
             <div className="bg-card rounded-2xl p-4 shadow-card space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Conversão</span>
                 <BarChart3 className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
-                {metrics?.conversion_rate || 0}%
-              </p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{metrics?.conversion_rate || 0}%</p>
             </div>
             <div className="bg-card rounded-2xl p-4 shadow-card space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket Médio</span>
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
-                {formatBRL(metrics?.avg_ticket || 0)}
-              </p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{formatBRL(metrics?.avg_ticket || 0)}</p>
             </div>
             <div className="bg-card rounded-2xl p-4 shadow-card space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">P.A. Médio</span>
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
-                {(metrics?.avg_pa || 0).toFixed(1)}
-              </p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">{(metrics?.avg_pa || 0).toFixed(1)}</p>
             </div>
           </motion.div>
 
-          {/* Seller Ranking */}
-          {ranking.length > 0 && (
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }} className="space-y-3">
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Ranking de Vendedores (Hoje)
-              </h2>
-              <div className="space-y-2">
-                {ranking.map((seller, i) => (
-                  <div key={seller.seller_id} className="bg-card rounded-2xl p-4 shadow-card flex items-center gap-4">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-secondary">
-                      {i === 0 ? (
-                        <Trophy className="h-4 w-4 text-warning" />
-                      ) : (
-                        <span className="text-xs font-semibold text-muted-foreground">{i + 1}</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{seller.seller_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {seller.conversion_rate}% conv. · P.A. {Number(seller.avg_pa || 0).toFixed(1)} · {seller.won_count}/{seller.total_count} vendas
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-foreground tabular-nums">
-                      {formatBRL(seller.total_value)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {/* Team Highlights */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+            <TeamHighlights dailyRanking={dailyRanking} />
+          </motion.div>
 
-          {/* Lost Sales */}
-          {lostSales.length > 0 && (
-            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} className="space-y-3">
-              <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive" /> Principais Perdas (Hoje)
-              </h2>
-              <div className="space-y-2">
-                {lostSales.map((att, i) => (
-                  <div key={i} className="bg-card rounded-2xl p-4 shadow-card flex items-center gap-3">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-destructive/10">
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{att.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">Motivo: {att.objection_reason}</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {new Date(att.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {/* Team Alerts */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
+            <TeamAlerts
+              dailyRanking={dailyRanking}
+              dailyGoal={dailyGoalPerSeller}
+              storeAvgConversion={storeAvgConversion}
+              storeAvgTicket={storeAvgTicket}
+            />
+          </motion.div>
+
+          {/* Team Ranking */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}>
+            <SellerRankingTabs
+              daily={dailyRanking}
+              weekly={weeklyRanking}
+              monthly={monthlyRanking}
+              currentUserId={user?.id || ""}
+              goalAchievement={goalAchievement}
+            />
+          </motion.div>
 
           {/* Empty state */}
           {(metrics?.total_attendances || 0) === 0 && (
