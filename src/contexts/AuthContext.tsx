@@ -34,14 +34,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfileAndRole = async (userId: string) => {
+  const fetchProfileAndRole = async (userId: string): Promise<boolean> => {
     const [profileRes, roleRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
     ]);
 
-    setProfile(profileRes.data ? (profileRes.data as UserProfile) : null);
+    const prof = profileRes.data ? (profileRes.data as UserProfile) : null;
+
+    if (prof && !prof.active) {
+      await supabase.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      setRole(null);
+      setDeactivatedMessage("Seu acesso está desativado. Procure o administrador.");
+      return false;
+    }
+
+    setProfile(prof);
     setRole(roleRes.data ? (roleRes.data.role as AppRole) : null);
+    return true;
   };
 
   const refreshProfile = async () => {
