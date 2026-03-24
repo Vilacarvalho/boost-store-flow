@@ -22,21 +22,8 @@ const Profile = () => {
   const [name, setName] = useState(profile?.name || "");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
-  const [seeding, setSeeding] = useState(false);
-  const [nameError, setNameError] = useState("");
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      const res = await supabase.functions.invoke("seed-multistore", { body: {} });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-      toast.success("Dados multi-loja criados com sucesso!");
-    } catch (e: any) {
-      toast.error(e.message);
-    }
-    setSeeding(false);
-  };
+  const [nameError, setNameError] = useState("");
 
   const roleLabels: Record<string, string> = { super_admin: "Super Admin", admin: "Administrador", manager: "Gerente", seller: "Vendedor", supervisor: "Supervisor" };
 
@@ -168,12 +155,17 @@ const Profile = () => {
             </div>
           )}
 
-          {import.meta.env.DEV && (role === "super_admin" || role === "admin") && (
-            <Button variant="outline" size="lg" onClick={handleSeed} disabled={seeding}
-              className="w-full justify-start gap-3 rounded-xl">
-              <Building2 className="h-5 w-5" />
-              {seeding ? "Criando dados multi-loja..." : "🔧 Seed Multi-Loja (teste)"}
-            </Button>
+          {(role === "super_admin" || role === "admin") && (
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => navigate("/network-setup")}
+              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary transition-colors"
+            >
+              <Building2 className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1 text-left">Configurar Rede</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </motion.button>
           )}
 
           <Button variant="ghost" size="lg" onClick={handleSignOut}
