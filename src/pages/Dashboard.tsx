@@ -263,13 +263,28 @@ const Dashboard = () => {
             )}
           </motion.div>
 
-          {/* Goal Cards — Daily / Weekly / Monthly */}
+          {/* Quick Ranking Summary */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
+            <QuickRankingSummary dailyRanking={dailyRanking} currentUserId={user?.id || ""} />
+          </motion.div>
+
+          {/* Goal Cards — Daily / Weekly / Monthly */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
             <SellerGoalCards periods={goalPeriods} />
           </motion.div>
 
+          {/* Contextual Messages */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+            <ContextualMessages
+              dailyRanking={dailyRanking}
+              currentUserId={user?.id || ""}
+              dailyGoal={dailyGoal}
+              dailyRealized={totalValue}
+            />
+          </motion.div>
+
           {/* Metrics Grid */}
-          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="grid grid-cols-2 gap-3">
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }} className="grid grid-cols-2 gap-3">
             <MetricCard label="Vendas" value={(metrics?.won_sales || 0).toString()} icon={ShoppingCart} />
             <MetricCard label="Conversão" value={`${metrics?.conversion_rate || 0}%`} icon={BarChart3} />
             <MetricCard label="Ticket Médio" value={formatBRL(metrics?.avg_ticket || 0)} icon={TrendingUp} />
