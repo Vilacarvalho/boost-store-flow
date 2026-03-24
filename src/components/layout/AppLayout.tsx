@@ -115,6 +115,7 @@ const AppLayout = ({ children, showFab = true }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role } = useAuth();
+  useDynamicFavicon();
 
   const resolvedRole = role ?? null;
   const navConfig = useMemo(() => {

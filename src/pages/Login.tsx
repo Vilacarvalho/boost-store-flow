@@ -7,17 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganization } from "@/hooks/useOrganization";
 
 const Login = () => {
   const navigate = useNavigate();
   const { signIn, signUp, session, loading: authLoading, deactivatedMessage, clearDeactivatedMessage } = useAuth();
   const { toast } = useToast();
+  const { data: org } = useOrganization();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  const brandName = org?.short_name || org?.name || "VendaMais";
+  const brandTagline = org?.tagline || "Gestão de Performance";
+  const brandLogo = org?.logo_url;
+  const brandColor = org?.primary_color;
+
+  const initials = (org?.short_name || org?.name || "VM")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
 
   useEffect(() => {
     if (deactivatedMessage) {
@@ -45,7 +59,6 @@ const Login = () => {
         toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
       } else {
         toast({ title: "Conta criada!", description: "Fazendo login..." });
-        // Auto-login after signup
         const { error: loginErr } = await signIn(email, password);
         if (!loginErr) navigate("/post-login");
       }
@@ -73,12 +86,28 @@ const Login = () => {
         className="w-full max-w-sm space-y-8"
       >
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary/10 mx-auto">
-            <TrendingUp className="h-7 w-7 text-primary" />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">VendaMais</h1>
+          {brandLogo ? (
+            <img
+              src={brandLogo}
+              alt={brandName}
+              className="h-14 w-auto mx-auto object-contain"
+            />
+          ) : (
+            <div
+              className={`inline-flex items-center justify-center h-14 w-14 rounded-2xl mx-auto ${!brandColor ? "bg-primary/10" : ""}`}
+              style={brandColor ? { backgroundColor: `${brandColor}18` } : undefined}
+            >
+              <span
+                className={`text-lg font-semibold ${!brandColor ? "text-primary" : ""}`}
+                style={brandColor ? { color: brandColor } : undefined}
+              >
+                {initials}
+              </span>
+            </div>
+          )}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{brandName}</h1>
           <p className="text-sm text-muted-foreground">
-            {isSignUp ? "Crie sua conta para começar" : "Entre para acessar sua conta"}
+            {isSignUp ? "Crie sua conta para começar" : brandTagline}
           </p>
         </div>
 
