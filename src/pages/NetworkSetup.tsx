@@ -53,7 +53,7 @@ const STEPS = [
 const NetworkSetup = () => {
   const navigate = useNavigate();
   const { role, profile } = useAuth();
-  const [step, setStep] = useState(0);
+  // step state managed below with draft
   const [submitting, setSubmitting] = useState(false);
 
   interface NetworkDraft {
