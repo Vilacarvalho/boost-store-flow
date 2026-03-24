@@ -115,9 +115,8 @@ const SupervisorStoreAlerts = ({ stores, networkAvgConversion, networkAvgTicket,
                 size="sm"
                 variant="ghost"
                 className="shrink-0 h-7 text-xs"
-                onClick={() => onCreateAction({
+            onClick={() => onCreateAction({
                   storeId: a.storeId,
-                  storeName: a.store,
                   issue: a.message,
                   source: a.source,
                 })}
