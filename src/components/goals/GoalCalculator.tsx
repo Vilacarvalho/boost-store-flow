@@ -252,11 +252,12 @@ const GoalCalculator = ({ onUseSuggested }: GoalCalculatorProps) => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base">Resultado do Cálculo</CardTitle>
-                <Badge variant="outline" className="text-xs">{modeLabels[planningMode]}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">Clique em "Usar valor" para preencher o formulário de meta oficial.</p>
+               <div className="flex items-center gap-2">
+                 <CardTitle className="text-base">Resultado — Sugestão de Meta</CardTitle>
+                 <Badge variant="outline" className="text-xs">{modeLabels[planningMode]}</Badge>
+                 <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">Apenas sugestão</Badge>
+               </div>
+               <p className="text-xs text-muted-foreground">Clique em "Usar valor" para preencher o formulário da meta oficial. <strong>Nada é salvo automaticamente.</strong></p>
             </CardHeader>
             <CardContent>
               <div className="rounded-xl border border-border overflow-x-auto">
