@@ -777,6 +777,66 @@ export type Database = {
           },
         ]
       }
+      store_action_plans: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string
+          due_date: string | null
+          id: string
+          issue: string
+          organization_id: string
+          responsible: string | null
+          source: string | null
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by: string
+          due_date?: string | null
+          id?: string
+          issue: string
+          organization_id: string
+          responsible?: string | null
+          source?: string | null
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          id?: string
+          issue?: string
+          organization_id?: string
+          responsible?: string | null
+          source?: string | null
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_action_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_action_plans_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_visits: {
         Row: {
           created_at: string
