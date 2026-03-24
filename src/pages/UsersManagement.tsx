@@ -109,9 +109,11 @@ const extractFunctionPayload = async (response?: Response): Promise<CreateUserFu
 const UsersManagement = () => {
   const { profile, role: myRole, user, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpenRaw] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const initialFormRef = useRef<string>("");
   const [form, setForm] = useState<UserFormState>({
     id: "",
     name: "",
@@ -121,6 +123,21 @@ const UsersManagement = () => {
     store_id: "",
     manager_can_sell: false,
   });
+
+  const isFormDirty = () => JSON.stringify(form) !== initialFormRef.current;
+
+  const setDialogOpen = (open: boolean) => {
+    if (!open && isFormDirty()) {
+      setConfirmCloseOpen(true);
+      return;
+    }
+    setDialogOpenRaw(open);
+  };
+
+  const forceCloseDialog = () => {
+    setConfirmCloseOpen(false);
+    setDialogOpenRaw(false);
+  };
 
   const { data: stores = [] } = useQuery({
     queryKey: ["admin-stores"],
