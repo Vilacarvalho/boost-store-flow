@@ -380,6 +380,17 @@ const GoalPerformance = () => {
     for (const seller of sellers) {
       const goalVal = await findGoalValue(seller.id, storeId, startStr);
 
+      const { data: sellerSales } = await supabase
+        .from("sales")
+        .select("total_value")
+        .eq("seller_id", seller.id)
+        .eq("store_id", storeId)
+        .eq("status", "won")
+        .gte("created_at", startStr)
+        .lte("created_at", endStr + "T23:59:59");
+
+      const realized = (sellerSales || []).reduce((sum, s) => sum + (s.total_value || 0), 0);
+
       sellerPerfs.push(buildPerformance(seller.id, seller.name, goalVal, realized));
     }
 
@@ -402,7 +413,7 @@ const GoalPerformance = () => {
         .lte("created_at", endStr + "T23:59:59");
 
       const realized = (storeSales || []).reduce((sum, s) => sum + (s.total_value || 0), 0);
-      perfs.push(buildPerformance(store.id, store.name, storeGoal?.target_value || 0, realized));
+      perfs.push(buildPerformance(store.id, store.name, storeGoalValue, realized));
     }
 
     setPerformanceData(perfs.sort((a, b) => b.realized - a.realized));
