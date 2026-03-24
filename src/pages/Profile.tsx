@@ -1,7 +1,7 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2, Heart, Eye, Image, Upload, X } from "lucide-react";
+import { LogOut, ChevronRight, User, Store, Target, Bell, Users, KeyRound, Building2, Heart, Eye, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,9 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCulture } from "@/hooks/useCulture";
-import { useOrganization } from "@/hooks/useOrganization";
 import { validateName, normalizeName } from "@/lib/validation";
-import { useQueryClient } from "@tanstack/react-query";
+import CompanySettingsDialog from "@/components/CompanySettingsDialog";
 
 const Profile = () => {
   const navigate = useNavigate();
