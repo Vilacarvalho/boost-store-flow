@@ -987,6 +987,19 @@ export type Database = {
           won_count: number
         }[]
       }
+      get_seller_ranking_period: {
+        Args: { _end_date: string; _start_date: string; _store_id: string }
+        Returns: {
+          avg_pa: number
+          avg_ticket: number
+          conversion_rate: number
+          seller_id: string
+          seller_name: string
+          total_count: number
+          total_value: number
+          won_count: number
+        }[]
+      }
       get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_store_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
