@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { formatBRL } from "@/lib/currency";
 import { VisitAgenda } from "@/components/supervisor/VisitAgenda";
 import { VisitHistory } from "@/components/supervisor/VisitHistory";
 import SupervisorStoreRanking, { StoreRankingEntry } from "@/components/supervisor/SupervisorStoreRanking";
@@ -11,7 +12,11 @@ import SupervisorStoreAlerts from "@/components/supervisor/SupervisorStoreAlerts
 import SupervisorHighlights from "@/components/supervisor/SupervisorHighlights";
 import SupervisorPendingActions, { PendingAction } from "@/components/supervisor/SupervisorPendingActions";
 import StoreActionPlans, { CreateActionPayload } from "@/components/supervisor/StoreActionPlans";
-import { CalendarDays, BarChart3, ClipboardList } from "lucide-react";
+import DailyPriority from "@/components/dashboard/DailyPriority";
+import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
+import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
+import SellerGoalCards from "@/components/dashboard/SellerGoalCards";
+import { CalendarDays, BarChart3, ClipboardList, Target, Calendar, TrendingUp, AlertTriangle } from "lucide-react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 10 },
@@ -32,6 +37,16 @@ function getMonthRange() {
   const now = new Date();
   return { start: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), end: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
 }
+function daysRemaining(endStr: string) {
+  const end = new Date(endStr);
+  const now = new Date();
+  return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86400000));
+}
+function daysElapsed(startStr: string) {
+  const start = new Date(startStr);
+  const now = new Date();
+  return Math.max(1, Math.ceil((now.getTime() - start.getTime()) / 86400000));
+}
 
 const SupervisorDashboard = () => {
   const { profile } = useAuth();
@@ -44,9 +59,16 @@ const SupervisorDashboard = () => {
   const [storeList, setStoreList] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // For triggering action plan creation from alerts
   const [actionTrigger, setActionTrigger] = useState(0);
   const [actionPayload, setActionPayload] = useState<CreateActionPayload | undefined>();
+
+  // Goals aggregated
+  const [dailyGoal, setDailyGoal] = useState(0);
+  const [weeklyGoal, setWeeklyGoal] = useState(0);
+  const [monthlyGoal, setMonthlyGoal] = useState(0);
+  const [dailyRealized, setDailyRealized] = useState(0);
+  const [weeklyRealized, setWeeklyRealized] = useState(0);
+  const [monthlyRealized, setMonthlyRealized] = useState(0);
 
   const today = fmt(new Date());
   const week = useMemo(getWeekRange, []);
@@ -119,6 +141,19 @@ const SupervisorDashboard = () => {
       setWeeklyStores(wk);
       setMonthlyStores(mo);
 
+      // Aggregated goals for supervisor
+      const totalMonthlyGoal = Object.values(goalMap).reduce((s, g) => s + g.target, 0);
+      const totalDailyRealized = daily.reduce((s, d) => s + d.total_value, 0);
+      const totalWeeklyRealized = wk.reduce((s, d) => s + d.total_value, 0);
+      const totalMonthlyRealized = mo.reduce((s, d) => s + d.total_value, 0);
+
+      setMonthlyGoal(totalMonthlyGoal);
+      setWeeklyGoal(totalMonthlyGoal > 0 ? Math.round(totalMonthlyGoal / 4.33) : 0);
+      setDailyGoal(totalMonthlyGoal > 0 ? Math.round(totalMonthlyGoal / 22) : 0);
+      setDailyRealized(totalDailyRealized);
+      setWeeklyRealized(totalWeeklyRealized);
+      setMonthlyRealized(totalMonthlyRealized);
+
       // Visit pending actions
       const visitData = visitsRes.data || [];
       const visitMap: Record<string, { store_id: string; visit_date: string }> = {};
@@ -161,6 +196,65 @@ const SupervisorDashboard = () => {
     setActionTrigger(t => t + 1);
   };
 
+  // Goal periods
+  const goalPeriods = useMemo(() => {
+    const weekElapsed = daysElapsed(week.start);
+    const weekRemain = daysRemaining(week.end);
+    const weekDailyAvg = weekElapsed > 0 ? weeklyRealized / weekElapsed : 0;
+    const weekProjection = weeklyRealized + weekDailyAvg * weekRemain;
+    const monthElapsed = daysElapsed(month.start);
+    const monthRemain = daysRemaining(month.end);
+    const monthDailyAvg = monthElapsed > 0 ? monthlyRealized / monthElapsed : 0;
+    const monthProjection = monthlyRealized + monthDailyAvg * monthRemain;
+
+    return [
+      { label: "Meta Diária", icon: Target, goal: dailyGoal, realized: dailyRealized, projection: dailyRealized, daysRemaining: 0 },
+      { label: "Meta Semanal", icon: Calendar, goal: weeklyGoal, realized: weeklyRealized, projection: weekProjection, daysRemaining: weekRemain },
+      { label: "Meta Mensal", icon: TrendingUp, goal: monthlyGoal, realized: monthlyRealized, projection: monthProjection, daysRemaining: monthRemain },
+    ];
+  }, [dailyGoal, weeklyGoal, monthlyGoal, dailyRealized, weeklyRealized, monthlyRealized, week, month]);
+
+  const monthProjection = useMemo(() => {
+    const monthElapsed = daysElapsed(month.start);
+    const monthRemain = daysRemaining(month.end);
+    const monthDailyAvg = monthElapsed > 0 ? monthlyRealized / monthElapsed : 0;
+    return monthlyRealized + monthDailyAvg * monthRemain;
+  }, [monthlyRealized, month]);
+
+  const monthGap = monthlyGoal > 0 ? monthlyGoal - monthProjection : 0;
+  const monthRemain = daysRemaining(month.end);
+
+  // Dynamic header
+  const headerMessage = useMemo(() => {
+    const storesBelowDaily = dailyStores.filter(s => s.goal_target > 0 && s.total_value < (s.goal_target / 22) * 0.5);
+    if (storesBelowDaily.length > 0) {
+      return { text: `${storesBelowDaily.length} loja${storesBelowDaily.length > 1 ? "s" : ""} abaixo da meta diária`, color: "text-destructive" };
+    }
+    if (monthlyGoal > 0 && monthProjection >= monthlyGoal) {
+      return { text: "Lojas supervisionadas acima do ritmo mensal", color: "text-success" };
+    }
+    if (monthlyGoal > 0 && monthProjection < monthlyGoal) {
+      return { text: "Meta mensal em risco nas lojas supervisionadas", color: "text-destructive" };
+    }
+    return { text: "Acompanhe o desempenho das lojas e gerencie suas visitas", color: "text-muted-foreground" };
+  }, [dailyStores, monthlyGoal, monthProjection]);
+
+  // Daily priority
+  const dailyPriority = useMemo(() => {
+    const storesNoSales = dailyStores.filter(s => s.total_sales === 0);
+    if (storesNoSales.length > 0) {
+      return { message: `${storesNoSales[0].store_name} sem vendas hoje`, severity: "critical" as const };
+    }
+    const storesBelowDaily = dailyStores.filter(s => s.goal_target > 0 && s.total_value < (s.goal_target / 22) * 0.3);
+    if (storesBelowDaily.length > 0) {
+      return { message: `${storesBelowDaily[0].store_name} muito abaixo da meta diária`, severity: "warning" as const };
+    }
+    if (storesWithoutRecentVisit.length > 0) {
+      return { message: `${storesWithoutRecentVisit[0].name} sem visita há mais de 14 dias`, severity: "warning" as const };
+    }
+    return { message: "Todas as lojas no radar — verifique a agenda de visitas", severity: "info" as const };
+  }, [dailyStores, storesWithoutRecentVisit]);
+
   if (loading) {
     return (
       <AppLayout>
@@ -177,7 +271,7 @@ const SupervisorDashboard = () => {
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
           <motion.div {...fadeUp} className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Painel do Supervisor</h1>
-            <p className="text-sm text-muted-foreground">Acompanhe o desempenho das lojas e gerencie suas visitas</p>
+            <p className={`text-sm font-medium ${headerMessage.color}`}>{headerMessage.text}</p>
           </motion.div>
 
           <Tabs defaultValue="overview" className="space-y-4">
@@ -197,10 +291,58 @@ const SupervisorDashboard = () => {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
+              {/* Prioridade do Dia */}
               <motion.div {...fadeUp}>
+                <DailyPriority message={dailyPriority.message} severity={dailyPriority.severity} />
+              </motion.div>
+
+              {/* Goal Cards */}
+              {monthlyGoal > 0 && (
+                <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.03 }}>
+                  <SellerGoalCards periods={goalPeriods} />
+                </motion.div>
+              )}
+
+              {/* Risco + Velocidade */}
+              {monthlyGoal > 0 && (
+                <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <MetaRiskIndicator
+                    goal={monthlyGoal}
+                    realized={monthlyRealized}
+                    projection={monthProjection}
+                    daysRemaining={monthRemain}
+                    label="Risco das Lojas"
+                  />
+                  <RequiredVelocity
+                    goal={monthlyGoal}
+                    realized={monthlyRealized}
+                    daysRemaining={monthRemain}
+                    label="Velocidade Necessária"
+                  />
+                </motion.div>
+              )}
+
+              {/* Déficit / Superávit */}
+              {monthlyGoal > 0 && (
+                <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.06 }}>
+                  <div className={`rounded-2xl p-4 shadow-card border ${monthGap > 0 ? "border-destructive/20 bg-destructive/5" : "border-success/20 bg-success/5"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      {monthGap > 0 ? <AlertTriangle className="h-4 w-4 text-destructive" /> : <TrendingUp className="h-4 w-4 text-success" />}
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {monthGap > 0 ? "Déficit estimado" : "Meta será superada"}
+                      </span>
+                    </div>
+                    <p className={`text-xl font-semibold tabular-nums ${monthGap > 0 ? "text-destructive" : "text-success"}`}>
+                      {formatBRL(Math.abs(monthGap))}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.07 }}>
                 <SupervisorHighlights stores={monthlyStores} />
               </motion.div>
-              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.09 }}>
                 <SupervisorStoreAlerts
                   stores={monthlyStores}
                   networkAvgConversion={netConv}
@@ -209,17 +351,17 @@ const SupervisorDashboard = () => {
                   onCreateAction={handleCreateFromAlert}
                 />
               </motion.div>
-              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.11 }}>
                 <StoreActionPlans
                   stores={storeList}
                   externalTrigger={actionTrigger}
                   externalPayload={actionPayload}
                 />
               </motion.div>
-              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.13 }}>
                 <SupervisorPendingActions actions={pendingActions} pendingChecklistCount={pendingChecklistCount} />
               </motion.div>
-              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}>
                 <SupervisorStoreRanking daily={dailyStores} weekly={weeklyStores} monthly={monthlyStores} />
               </motion.div>
             </TabsContent>
