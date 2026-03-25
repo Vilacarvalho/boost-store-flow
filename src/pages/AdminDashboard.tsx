@@ -14,6 +14,9 @@ import NetworkStoreRanking, { StoreRankingEntry } from "@/components/admin/Netwo
 import NetworkInsights from "@/components/admin/NetworkInsights";
 import NetworkHighlights from "@/components/admin/NetworkHighlights";
 import StoresAtRisk from "@/components/admin/StoresAtRisk";
+import DailyPriority from "@/components/dashboard/DailyPriority";
+import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
+import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
 
 interface StoreData {
   id: string;
@@ -87,14 +90,12 @@ const AdminDashboard = () => {
   const [stores, setStores] = useState<StoreData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Network goals
   const [dailyGoal, setDailyGoal] = useState(0);
   const [weeklyGoal, setWeeklyGoal] = useState(0);
   const [monthlyGoal, setMonthlyGoal] = useState(0);
   const [weeklyRealized, setWeeklyRealized] = useState(0);
   const [monthlyRealized, setMonthlyRealized] = useState(0);
 
-  // Weekly/monthly store data for ranking
   const [weeklyStores, setWeeklyStores] = useState<StoreRankingEntry[]>([]);
   const [monthlyStores, setMonthlyStores] = useState<StoreRankingEntry[]>([]);
 
@@ -115,11 +116,6 @@ const AdminDashboard = () => {
       const { data: storeList } = await query;
       if (!storeList || storeList.length === 0) { setLoading(false); return; }
 
-      const storeMetrics: StoreData[] = [];
-      const weekStoreEntries: StoreRankingEntry[] = [];
-      const monthStoreEntries: StoreRankingEntry[] = [];
-
-      // Fetch all store data in parallel
       const storePromises = storeList.map(async (store) => {
         const [metricsRes, goalRes, weekRes, monthRes] = await Promise.all([
           supabase.rpc("get_daily_metrics", { _store_id: store.id, _date: today }),
@@ -132,40 +128,33 @@ const AdminDashboard = () => {
         const goal = goalRes.data?.[0];
 
         const storeData: StoreData = {
-          id: store.id,
-          name: store.name,
-          total_value: m?.total_value || 0,
-          won_sales: m?.won_sales || 0,
-          total_sales: m?.total_sales || 0,
-          conversion_rate: m?.conversion_rate || 0,
-          avg_ticket: m?.avg_ticket || 0,
-          goal_target: goal?.target_value || 0,
+          id: store.id, name: store.name,
+          total_value: m?.total_value || 0, won_sales: m?.won_sales || 0,
+          total_sales: m?.total_sales || 0, conversion_rate: m?.conversion_rate || 0,
+          avg_ticket: m?.avg_ticket || 0, goal_target: goal?.target_value || 0,
           goal_current: goal?.current_value || 0,
         };
 
         const weeklyVal = (weekRes.data || []).reduce((s: number, r: any) => s + (r.total_value || 0), 0);
         const weeklyWon = (weekRes.data || []).reduce((s: number, r: any) => s + (r.won_count || 0), 0);
         const weeklyTotal = (weekRes.data || []).reduce((s: number, r: any) => s + (r.total_count || 0), 0);
-        const weekConv = weeklyTotal > 0 ? (weeklyWon / weeklyTotal) * 100 : 0;
-        const weekTicket = weeklyWon > 0 ? weeklyVal / weeklyWon : 0;
-
         const monthlyVal = (monthRes.data || []).reduce((s: number, r: any) => s + (r.total_value || 0), 0);
         const monthlyWon = (monthRes.data || []).reduce((s: number, r: any) => s + (r.won_count || 0), 0);
         const monthlyTotal = (monthRes.data || []).reduce((s: number, r: any) => s + (r.total_count || 0), 0);
-        const monthConv = monthlyTotal > 0 ? (monthlyWon / monthlyTotal) * 100 : 0;
-        const monthTicket = monthlyWon > 0 ? monthlyVal / monthlyWon : 0;
         const goalPct = goal?.target_value > 0 ? ((goal?.current_value || 0) / goal.target_value) * 100 : 0;
 
         return {
           storeData,
-          weekEntry: { id: store.id, name: store.name, total_value: weeklyVal, won_sales: weeklyWon, total_sales: weeklyTotal, conversion_rate: weekConv, avg_ticket: weekTicket, goal_pct: goalPct } as StoreRankingEntry,
-          monthEntry: { id: store.id, name: store.name, total_value: monthlyVal, won_sales: monthlyWon, total_sales: monthlyTotal, conversion_rate: monthConv, avg_ticket: monthTicket, goal_pct: goalPct } as StoreRankingEntry,
-          weeklyVal,
-          monthlyVal,
+          weekEntry: { id: store.id, name: store.name, total_value: weeklyVal, won_sales: weeklyWon, total_sales: weeklyTotal, conversion_rate: weeklyTotal > 0 ? (weeklyWon / weeklyTotal) * 100 : 0, avg_ticket: weeklyWon > 0 ? weeklyVal / weeklyWon : 0, goal_pct: goalPct } as StoreRankingEntry,
+          monthEntry: { id: store.id, name: store.name, total_value: monthlyVal, won_sales: monthlyWon, total_sales: monthlyTotal, conversion_rate: monthlyTotal > 0 ? (monthlyWon / monthlyTotal) * 100 : 0, avg_ticket: monthlyWon > 0 ? monthlyVal / monthlyWon : 0, goal_pct: goalPct } as StoreRankingEntry,
+          weeklyVal, monthlyVal,
         };
       });
 
       const results = await Promise.all(storePromises);
+      const storeMetrics: StoreData[] = [];
+      const weekStoreEntries: StoreRankingEntry[] = [];
+      const monthStoreEntries: StoreRankingEntry[] = [];
       let totalWeekly = 0, totalMonthly = 0;
 
       for (const r of results) {
@@ -180,18 +169,14 @@ const AdminDashboard = () => {
       setWeeklyStores(weekStoreEntries);
       setMonthlyStores(monthStoreEntries);
       setWeeklyRealized(totalWeekly);
-      setMonthlyRealized(totalMonthly);
 
-      // Network goals
       const totalGoalTarget = storeMetrics.reduce((s, st) => s + st.goal_target, 0);
       const totalGoalCurrent = storeMetrics.reduce((s, st) => s + st.goal_current, 0);
       setMonthlyGoal(totalGoalTarget);
       setMonthlyRealized(totalMonthly > totalGoalCurrent ? totalMonthly : totalGoalCurrent);
 
-      const resolvedWeekly = totalGoalTarget > 0 ? Math.round(totalGoalTarget / 4.33) : 0;
-      const resolvedDaily = totalGoalTarget > 0 ? Math.round(totalGoalTarget / 22) : 0;
-      setWeeklyGoal(resolvedWeekly);
-      setDailyGoal(resolvedDaily);
+      setWeeklyGoal(totalGoalTarget > 0 ? Math.round(totalGoalTarget / 4.33) : 0);
+      setDailyGoal(totalGoalTarget > 0 ? Math.round(totalGoalTarget / 22) : 0);
     } catch (err) {
       console.error("Error loading admin dashboard:", err);
     } finally {
@@ -199,32 +184,23 @@ const AdminDashboard = () => {
     }
   };
 
-  // Computed values
   const networkValue = stores.reduce((s, st) => s + st.total_value, 0);
   const networkSales = stores.reduce((s, st) => s + st.total_sales, 0);
   const networkWon = stores.reduce((s, st) => s + st.won_sales, 0);
   const networkConversion = networkSales > 0 ? (networkWon / networkSales) * 100 : 0;
   const networkAvgTicket = networkWon > 0 ? networkValue / networkWon : 0;
 
-  // Daily ranking entries for store ranking
   const dailyStoreRanking: StoreRankingEntry[] = stores.map(s => ({
-    id: s.id,
-    name: s.name,
-    total_value: s.total_value,
-    won_sales: s.won_sales,
-    total_sales: s.total_sales,
-    conversion_rate: s.conversion_rate,
-    avg_ticket: s.avg_ticket,
+    id: s.id, name: s.name, total_value: s.total_value, won_sales: s.won_sales,
+    total_sales: s.total_sales, conversion_rate: s.conversion_rate, avg_ticket: s.avg_ticket,
     goal_pct: s.goal_target > 0 ? (s.goal_current / s.goal_target) * 100 : 0,
   }));
 
-  // Goal periods for cards
   const goalPeriods = useMemo(() => {
     const weekElapsed = daysElapsed(week.start);
     const weekRemain = daysRemaining(week.end);
     const weekDailyAvg = weekElapsed > 0 ? weeklyRealized / weekElapsed : 0;
     const weekProjection = weeklyRealized + weekDailyAvg * weekRemain;
-
     const monthElapsed = daysElapsed(month.start);
     const monthRemain = daysRemaining(month.end);
     const monthDailyAvg = monthElapsed > 0 ? monthlyRealized / monthElapsed : 0;
@@ -237,7 +213,6 @@ const AdminDashboard = () => {
     ];
   }, [dailyGoal, weeklyGoal, monthlyGoal, networkValue, weeklyRealized, monthlyRealized, week, month]);
 
-  // Monthly projection & gap
   const monthProjection = useMemo(() => {
     const monthElapsed = daysElapsed(month.start);
     const monthRemain = daysRemaining(month.end);
@@ -246,8 +221,8 @@ const AdminDashboard = () => {
   }, [monthlyRealized, month]);
 
   const monthGap = monthlyGoal > 0 ? monthlyGoal - monthProjection : 0;
+  const monthRemain = daysRemaining(month.end);
 
-  // Dynamic header message
   const headerMessage = useMemo(() => {
     const dailyRemaining = Math.max(0, dailyGoal - networkValue);
     if (dailyGoal > 0 && networkValue >= dailyGoal) {
@@ -265,6 +240,7 @@ const AdminDashboard = () => {
       if (actualPct >= expectedPct) {
         return { text: "A rede está acima do ritmo semanal", color: "text-primary" };
       }
+      return { text: "A rede está abaixo do ritmo semanal", color: "text-destructive" };
     }
     if (monthlyGoal > 0 && monthProjection < monthlyGoal) {
       return { text: "A meta mensal da rede está em risco", color: "text-destructive" };
@@ -274,6 +250,22 @@ const AdminDashboard = () => {
     }
     return { text: `Visão consolidada da rede · ${stores.length} loja${stores.length !== 1 ? "s" : ""} ativa${stores.length !== 1 ? "s" : ""}`, color: "text-muted-foreground" };
   }, [dailyGoal, networkValue, weeklyGoal, weeklyRealized, monthlyGoal, monthProjection, stores.length]);
+
+  // Daily priority
+  const dailyPriority = useMemo(() => {
+    const storesNoSales = stores.filter(s => s.total_sales === 0);
+    if (storesNoSales.length > 0) {
+      return { message: `${storesNoSales.length === 1 ? storesNoSales[0].name + " sem vendas" : storesNoSales.length + " lojas sem vendas"} hoje`, severity: "critical" as const };
+    }
+    const lowConv = stores.filter(s => s.conversion_rate > 0 && s.conversion_rate < networkConversion * 0.5);
+    if (lowConv.length > 0) {
+      return { message: `${lowConv[0].name} com conversão crítica (${lowConv[0].conversion_rate.toFixed(1)}%)`, severity: "warning" as const };
+    }
+    if (monthlyGoal > 0 && monthProjection < monthlyGoal) {
+      return { message: `Rede abaixo do ritmo — déficit estimado de ${formatBRL(Math.abs(monthGap))}`, severity: "warning" as const };
+    }
+    return { message: "Rede operando dentro do esperado", severity: "info" as const };
+  }, [stores, networkConversion, monthlyGoal, monthProjection, monthGap]);
 
   if (loading) {
     return (
@@ -289,29 +281,49 @@ const AdminDashboard = () => {
     <AppLayout>
       <div className="md:ml-64">
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-          {/* 1) Header with dynamic network goal status */}
+          {/* 1) Header */}
           <motion.div {...fadeUp} className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Painel Administrativo</h1>
             <p className={`text-sm font-medium ${headerMessage.color}`}>{headerMessage.text}</p>
           </motion.div>
 
-          {/* 2) Network Goal Cards — Daily / Weekly / Monthly */}
+          {/* 2) Prioridade do Dia */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.03 }}>
+            <DailyPriority message={dailyPriority.message} severity={dailyPriority.severity} />
+          </motion.div>
+
+          {/* 3) Network Goal Cards */}
           {monthlyGoal > 0 && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
               <SellerGoalCards periods={goalPeriods} />
             </motion.div>
           )}
 
-          {/* 3) Deficit / Surplus */}
+          {/* 4) Risco + Velocidade */}
+          {monthlyGoal > 0 && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.07 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <MetaRiskIndicator
+                goal={monthlyGoal}
+                realized={monthlyRealized}
+                projection={monthProjection}
+                daysRemaining={monthRemain}
+                label="Risco de Meta da Rede"
+              />
+              <RequiredVelocity
+                goal={monthlyGoal}
+                realized={monthlyRealized}
+                daysRemaining={monthRemain}
+                label="Velocidade da Rede"
+              />
+            </motion.div>
+          )}
+
+          {/* 5) Déficit / Superávit */}
           {monthlyGoal > 0 && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
               <div className={`rounded-2xl p-4 shadow-card border ${monthGap > 0 ? "border-destructive/20 bg-destructive/5" : "border-success/20 bg-success/5"}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  {monthGap > 0 ? (
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4 text-success" />
-                  )}
+                  {monthGap > 0 ? <AlertTriangle className="h-4 w-4 text-destructive" /> : <TrendingUp className="h-4 w-4 text-success" />}
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {monthGap > 0 ? "Déficit estimado para atingir a meta" : "Meta será superada"}
                   </span>
@@ -320,20 +332,18 @@ const AdminDashboard = () => {
                   {formatBRL(Math.abs(monthGap))}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {monthGap > 0
-                    ? "Baseado na projeção de fechamento no ritmo atual da rede"
-                    : "Projeção indica que a meta mensal será superada"}
+                  {monthGap > 0 ? "Baseado na projeção no ritmo atual da rede" : "Projeção indica que a meta mensal será superada"}
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* 5) Stores at risk */}
+          {/* 6) Stores at risk */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
             <StoresAtRisk stores={stores} networkAvgConversion={networkConversion} />
           </motion.div>
 
-          {/* 6) Network Insights */}
+          {/* 7) Network Insights */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
             <NetworkInsights
               stores={stores}
@@ -344,7 +354,7 @@ const AdminDashboard = () => {
             />
           </motion.div>
 
-          {/* 7) KPIs consolidados */}
+          {/* 8) KPIs consolidados */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Indicadores da Rede</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -355,18 +365,14 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
 
-          {/* 8) Destaques da rede */}
+          {/* 9) Destaques */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
             <NetworkHighlights stores={stores} />
           </motion.div>
 
-          {/* 4) Store Ranking with tabs & sorts */}
+          {/* 10) Store Ranking */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.18 }}>
-            <NetworkStoreRanking
-              daily={dailyStoreRanking}
-              weekly={weeklyStores}
-              monthly={monthlyStores}
-            />
+            <NetworkStoreRanking daily={dailyStoreRanking} weekly={weeklyStores} monthly={monthlyStores} />
           </motion.div>
 
           {/* Quick Links */}
