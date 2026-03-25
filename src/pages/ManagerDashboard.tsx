@@ -11,6 +11,9 @@ import TeamHighlights from "@/components/manager/TeamHighlights";
 import TeamAlerts from "@/components/manager/TeamAlerts";
 import StoreInsights from "@/components/manager/StoreInsights";
 import StoreActionPlans from "@/components/supervisor/StoreActionPlans";
+import DailyPriority from "@/components/dashboard/DailyPriority";
+import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
+import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
 
 interface Metrics {
   total_sales: number;
@@ -75,7 +78,6 @@ const ManagerDashboard = () => {
   const [goalAchievement, setGoalAchievement] = useState<Record<string, { pct: number }>>({});
   const [loading, setLoading] = useState(true);
 
-  // Store goals
   const [dailyGoal, setDailyGoal] = useState(0);
   const [weeklyGoal, setWeeklyGoal] = useState(0);
   const [monthlyGoal, setMonthlyGoal] = useState(0);
@@ -111,13 +113,11 @@ const ManagerDashboard = () => {
     if (weeklyRes.data) setWeeklyRanking(weeklyRes.data as RankingEntry[]);
     if (monthlyRes.data) setMonthlyRanking(monthlyRes.data as RankingEntry[]);
 
-    // Store-level realized values
     const storeWeeklyRealized = (weeklyRes.data as RankingEntry[] || []).reduce((s, r) => s + r.total_value, 0);
     const storeMonthlyRealized = (monthlyRes.data as RankingEntry[] || []).reduce((s, r) => s + r.total_value, 0);
     setWeeklyRealized(storeWeeklyRealized);
     setMonthlyRealized(storeMonthlyRealized);
 
-    // Resolve store goals with fallback from monthly
     const resolvedMonthly = storeMonthlyGoal.data?.target_value || 0;
     const resolvedWeekly = storeWeeklyGoal.data?.target_value || (resolvedMonthly > 0 ? Math.round(resolvedMonthly / 4.33) : 0);
     const resolvedDaily = storeDailyGoal.data?.target_value || (resolvedMonthly > 0 ? Math.round(resolvedMonthly / 22) : 0);
@@ -126,7 +126,6 @@ const ManagerDashboard = () => {
     setWeeklyGoal(resolvedWeekly);
     setMonthlyGoal(resolvedMonthly);
 
-    // Goal achievement for ranking
     if (monthlyRes.data && resolvedMonthly > 0) {
       const { data: allGoals } = await supabase.from("goals").select("user_id, target_value").eq("store_id", storeId).eq("period_type", "monthly").lte("start_date", month.start).gte("end_date", month.end).not("user_id", "is", null);
       const goalMap: Record<string, number> = {};
@@ -144,23 +143,18 @@ const ManagerDashboard = () => {
 
   const totalValue = metrics?.total_value || 0;
   const dailyRemaining = Math.max(0, dailyGoal - totalValue);
-  const storeName = "Loja";
 
-  // Compute store averages for alerts
   const storeAvgConversion = dailyRanking.length > 0 ? dailyRanking.reduce((s, r) => s + r.conversion_rate, 0) / dailyRanking.length : 0;
   const storeAvgTicket = dailyRanking.length > 0 ? dailyRanking.reduce((s, r) => s + (r.avg_ticket || 0), 0) / dailyRanking.length : 0;
   const eligibleCount = dailyRanking.length || 1;
   const dailyGoalPerSeller = dailyGoal > 0 ? dailyGoal / eligibleCount : 0;
 
-  // Goal periods for cards (store-level)
   const goalPeriods = useMemo(() => {
     const dailyProjection = totalValue;
-
     const weekElapsed = daysElapsed(week.start);
     const weekRemain = daysRemaining(week.end);
     const weekDailyAvg = weekElapsed > 0 ? weeklyRealized / weekElapsed : 0;
     const weekProjection = weeklyRealized + weekDailyAvg * weekRemain;
-
     const monthElapsed = daysElapsed(month.start);
     const monthRemain = daysRemaining(month.end);
     const monthDailyAvg = monthElapsed > 0 ? monthlyRealized / monthElapsed : 0;
@@ -173,7 +167,6 @@ const ManagerDashboard = () => {
     ];
   }, [dailyGoal, weeklyGoal, monthlyGoal, totalValue, weeklyRealized, monthlyRealized, week, month]);
 
-  // Deficit / surplus for monthly
   const monthProjection = useMemo(() => {
     const monthElapsed = daysElapsed(month.start);
     const monthRemain = daysRemaining(month.end);
@@ -182,8 +175,8 @@ const ManagerDashboard = () => {
   }, [monthlyRealized, month]);
 
   const monthGap = monthlyGoal > 0 ? monthlyGoal - monthProjection : 0;
+  const monthRemain = daysRemaining(month.end);
 
-  // Dynamic header message
   const headerMessage = useMemo(() => {
     if (dailyGoal > 0 && totalValue >= dailyGoal) {
       return { text: "✅ Meta diária da loja atingida!", color: "text-success" };
@@ -207,6 +200,21 @@ const ManagerDashboard = () => {
     return { text: "Acompanhe o desempenho da loja", color: "text-muted-foreground" };
   }, [dailyGoal, totalValue, dailyRemaining, weeklyGoal, weeklyRealized, monthlyGoal, monthProjection]);
 
+  // Daily priority
+  const dailyPriority = useMemo(() => {
+    const sellersNoSales = dailyRanking.filter(r => r.total_value === 0);
+    if (sellersNoSales.length > 0) {
+      return { message: `${sellersNoSales.length === 1 ? sellersNoSales[0].seller_name.split(" ")[0] + " sem vendas" : sellersNoSales.length + " vendedores sem vendas"} hoje`, severity: "warning" as const };
+    }
+    if (dailyGoal > 0 && dailyRemaining > 0) {
+      return { message: `Loja abaixo da meta hoje — faltam ${formatBRL(dailyRemaining)}`, severity: dailyRemaining > dailyGoal * 0.5 ? "critical" as const : "warning" as const };
+    }
+    if (dailyGoal > 0 && totalValue >= dailyGoal) {
+      return { message: "Meta diária atingida! Acompanhe a equipe", severity: "info" as const };
+    }
+    return { message: "Acompanhe a equipe para garantir a meta", severity: "info" as const };
+  }, [dailyRanking, dailyGoal, dailyRemaining, totalValue]);
+
   if (loading) {
     return (
       <AppLayout>
@@ -221,27 +229,47 @@ const ManagerDashboard = () => {
     <AppLayout>
       <div className="md:ml-64">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-          {/* 1) Header with dynamic store goal status */}
+          {/* 1) Header */}
           <motion.div {...fadeUp} className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Painel do Gerente</h1>
             <p className={`text-sm font-medium ${headerMessage.color}`}>{headerMessage.text}</p>
           </motion.div>
 
-          {/* 2) Store Goal Cards — Daily / Weekly / Monthly */}
+          {/* 2) Prioridade do Dia */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.03 }}>
+            <DailyPriority message={dailyPriority.message} severity={dailyPriority.severity} />
+          </motion.div>
+
+          {/* 3) Store Goal Cards */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
             <SellerGoalCards periods={goalPeriods} />
           </motion.div>
 
-          {/* 3) Deficit / Surplus */}
+          {/* 4) Risco de Meta + Velocidade Necessária */}
+          {monthlyGoal > 0 && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.07 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <MetaRiskIndicator
+                goal={monthlyGoal}
+                realized={monthlyRealized}
+                projection={monthProjection}
+                daysRemaining={monthRemain}
+                label="Risco de Meta da Loja"
+              />
+              <RequiredVelocity
+                goal={monthlyGoal}
+                realized={monthlyRealized}
+                daysRemaining={monthRemain}
+                label="Velocidade da Loja"
+              />
+            </motion.div>
+          )}
+
+          {/* 5) Déficit / Superávit */}
           {monthlyGoal > 0 && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
               <div className={`rounded-2xl p-4 shadow-card border ${monthGap > 0 ? "border-destructive/20 bg-destructive/5" : "border-success/20 bg-success/5"}`}>
                 <div className="flex items-center gap-2 mb-1">
-                  {monthGap > 0 ? (
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4 text-success" />
-                  )}
+                  {monthGap > 0 ? <AlertTriangle className="h-4 w-4 text-destructive" /> : <TrendingUp className="h-4 w-4 text-success" />}
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {monthGap > 0 ? "Déficit estimado para atingir a meta" : "Meta será superada"}
                   </span>
@@ -250,15 +278,13 @@ const ManagerDashboard = () => {
                   {formatBRL(Math.abs(monthGap))}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {monthGap > 0
-                    ? "Baseado na projeção de fechamento no ritmo atual da loja"
-                    : "Projeção indica que a meta mensal será superada"}
+                  {monthGap > 0 ? "Baseado na projeção no ritmo atual da loja" : "Projeção indica que a meta mensal será superada"}
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* 4) Store Insights */}
+          {/* 6) Store Insights */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
             <StoreInsights
               dailyRanking={dailyRanking}
@@ -276,7 +302,7 @@ const ManagerDashboard = () => {
             />
           </motion.div>
 
-          {/* 5) KPIs operacionais */}
+          {/* 7) KPIs operacionais */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Indicadores Operacionais</p>
             <div className="grid grid-cols-2 gap-3">
@@ -287,12 +313,12 @@ const ManagerDashboard = () => {
             </div>
           </motion.div>
 
-          {/* 6) Destaques do dia */}
+          {/* 8) Destaques */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
             <TeamHighlights dailyRanking={dailyRanking} />
           </motion.div>
 
-          {/* Team Alerts */}
+          {/* 9) Team Alerts */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
             <TeamAlerts
               dailyRanking={dailyRanking}
@@ -302,7 +328,7 @@ const ManagerDashboard = () => {
             />
           </motion.div>
 
-          {/* 7) Ranking da equipe */}
+          {/* 10) Ranking */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.18 }}>
             <SellerRankingTabs
               daily={dailyRanking}
@@ -313,7 +339,7 @@ const ManagerDashboard = () => {
             />
           </motion.div>
 
-          {/* 8) Planos de ação */}
+          {/* 11) Planos de ação */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }}>
             <StoreActionPlans
               stores={[{ id: profile?.store_id || "", name: "" }]}

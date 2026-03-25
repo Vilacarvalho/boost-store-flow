@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { TrendingUp, Target, ShoppingCart, BarChart3, AlertTriangle, Heart, Calendar } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +11,9 @@ import SellerGoalCards from "@/components/dashboard/SellerGoalCards";
 import SellerRankingTabs, { RankingEntry } from "@/components/dashboard/SellerRankingTabs";
 import QuickRankingSummary from "@/components/dashboard/QuickRankingSummary";
 import ContextualMessages from "@/components/dashboard/ContextualMessages";
+import DailyPriority from "@/components/dashboard/DailyPriority";
+import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
+import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
 
 interface Metrics {
   total_sales: number;
@@ -45,28 +47,21 @@ const MetricCard = ({ label, value, icon: Icon }: { label: string; value: string
   </div>
 );
 
-/* ── helpers ── */
-function getWeekRange(): { start: string; end: string } {
+function getWeekRange() {
   const now = new Date();
   const day = now.getDay();
-  const diff = day === 0 ? 6 : day - 1; // Monday-based
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - diff);
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
+  const diff = day === 0 ? 6 : day - 1;
+  const mon = new Date(now); mon.setDate(now.getDate() - diff);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
   return { start: fmt(mon), end: fmt(sun) };
 }
 
-function getMonthRange(): { start: string; end: string } {
+function getMonthRange() {
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  return { start: fmt(start), end: fmt(end) };
+  return { start: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), end: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
 }
 
-function fmt(d: Date) {
-  return d.toISOString().split("T")[0];
-}
+function fmt(d: Date) { return d.toISOString().split("T")[0]; }
 
 function daysRemaining(endStr: string) {
   const end = new Date(endStr);
@@ -80,7 +75,6 @@ function daysElapsed(startStr: string) {
   return Math.max(1, Math.ceil((now.getTime() - start.getTime()) / 86400000));
 }
 
-/* ── main component ── */
 const Dashboard = () => {
   const { profile, user } = useAuth();
   const navigate = useNavigate();
@@ -89,19 +83,16 @@ const Dashboard = () => {
   const [lostSales, setLostSales] = useState<LostSale[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Rankings
   const [dailyRanking, setDailyRanking] = useState<RankingEntry[]>([]);
   const [weeklyRanking, setWeeklyRanking] = useState<RankingEntry[]>([]);
   const [monthlyRanking, setMonthlyRanking] = useState<RankingEntry[]>([]);
 
-  // Goals
   const [dailyGoal, setDailyGoal] = useState(0);
   const [weeklyGoal, setWeeklyGoal] = useState(0);
   const [monthlyGoal, setMonthlyGoal] = useState(0);
   const [weeklyRealized, setWeeklyRealized] = useState(0);
   const [monthlyRealized, setMonthlyRealized] = useState(0);
 
-  // Goal achievement map for ranking
   const [goalAchievement, setGoalAchievement] = useState<Record<string, { pct: number }>>({});
 
   const today = fmt(new Date());
@@ -121,7 +112,6 @@ const Dashboard = () => {
     const fetchAll = async () => {
       setLoading(true);
 
-      // Parallel fetches
       const [metricsRes, dailyRankRes, weeklyRankRes, monthlyRankRes, lostRes] = await Promise.all([
         supabase.rpc("get_daily_metrics", { _store_id: storeId }),
         supabase.rpc("get_seller_ranking", { _store_id: storeId }),
@@ -130,22 +120,18 @@ const Dashboard = () => {
         supabase.from("sales").select("objection_reason, created_at, customers(name)").eq("store_id", storeId).eq("status", "lost").gte("created_at", today).order("created_at", { ascending: false }).limit(5),
       ]);
 
-      // Metrics
       if (metricsRes.data?.length) setMetrics(metricsRes.data[0] as Metrics);
       else setMetrics({ total_sales: 0, won_sales: 0, total_value: 0, avg_ticket: 0, conversion_rate: 0, total_attendances: 0, avg_pa: 0 });
 
-      // Rankings
       if (dailyRankRes.data) setDailyRanking(dailyRankRes.data as RankingEntry[]);
       if (weeklyRankRes.data) setWeeklyRanking(weeklyRankRes.data as RankingEntry[]);
       if (monthlyRankRes.data) setMonthlyRanking(monthlyRankRes.data as RankingEntry[]);
 
-      // Weekly/Monthly realized for current user
       const myWeekly = (weeklyRankRes.data as RankingEntry[] || []).find(r => r.seller_id === userId);
       const myMonthly = (monthlyRankRes.data as RankingEntry[] || []).find(r => r.seller_id === userId);
       setWeeklyRealized(myWeekly?.total_value || 0);
       setMonthlyRealized(myMonthly?.total_value || 0);
 
-      // Lost sales
       if (lostRes.data) {
         setLostSales(lostRes.data.map((s: any) => ({
           customer_name: s.customers?.name || "Cliente",
@@ -154,7 +140,6 @@ const Dashboard = () => {
         })));
       }
 
-      // Goals - fetch user goals for current periods
       const [userDailyGoal, userWeeklyGoal, userMonthlyGoal, storeDailyGoal, storeWeeklyGoal, storeMonthlyGoal] = await Promise.all([
         supabase.from("goals").select("target_value").eq("user_id", userId).lte("start_date", today).gte("end_date", today).eq("period_type", "daily").order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("goals").select("target_value").eq("user_id", userId).lte("start_date", week.start).gte("end_date", week.end).eq("period_type", "weekly").order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -164,7 +149,6 @@ const Dashboard = () => {
         supabase.from("goals").select("target_value").eq("store_id", storeId).is("user_id", null).lte("start_date", month.start).gte("end_date", month.end).eq("period_type", "monthly").order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
 
-      // Resolve goals with user > store > monthly proportional fallback
       const resolvedMonthly = userMonthlyGoal.data?.target_value || storeMonthlyGoal.data?.target_value || 0;
       const resolvedWeekly = userWeeklyGoal.data?.target_value || storeWeeklyGoal.data?.target_value || (resolvedMonthly > 0 ? Math.round(resolvedMonthly / 4.33) : 0);
       const resolvedDaily = userDailyGoal.data?.target_value || storeDailyGoal.data?.target_value || (resolvedMonthly > 0 ? Math.round(resolvedMonthly / 22) : 5000);
@@ -173,22 +157,13 @@ const Dashboard = () => {
       setWeeklyGoal(resolvedWeekly);
       setMonthlyGoal(resolvedMonthly);
 
-      // Goal achievement for all sellers (monthly)
       if (monthlyRankRes.data && resolvedMonthly > 0) {
         const achievement: Record<string, { pct: number }> = {};
-        // Fetch all individual goals for this store's users
         const { data: allGoals } = await supabase
-          .from("goals")
-          .select("user_id, target_value")
-          .eq("store_id", storeId)
-          .eq("period_type", "monthly")
-          .lte("start_date", month.start)
-          .gte("end_date", month.end)
-          .not("user_id", "is", null);
-
+          .from("goals").select("user_id, target_value").eq("store_id", storeId)
+          .eq("period_type", "monthly").lte("start_date", month.start).gte("end_date", month.end).not("user_id", "is", null);
         const goalMap: Record<string, number> = {};
         (allGoals || []).forEach((g: any) => { goalMap[g.user_id] = g.target_value; });
-
         (monthlyRankRes.data as RankingEntry[]).forEach((s) => {
           const g = goalMap[s.seller_id] || resolvedMonthly;
           achievement[s.seller_id] = { pct: g > 0 ? (s.total_value / g) * 100 : 0 };
@@ -203,7 +178,6 @@ const Dashboard = () => {
   }, [profile?.store_id, user]);
 
   const totalValue = metrics?.total_value || 0;
-  const goalProgress = dailyGoal > 0 ? (totalValue / dailyGoal) * 100 : 0;
   const remaining = Math.max(0, dailyGoal - totalValue);
   const userName = profile?.name?.split(" ")[0] || "Vendedor";
 
@@ -216,7 +190,7 @@ const Dashboard = () => {
 
   // Goal periods for cards
   const goalPeriods = useMemo(() => {
-    const dailyProjection = totalValue; // already today
+    const dailyProjection = totalValue;
     const weekElapsed = daysElapsed(week.start);
     const weekRemain = daysRemaining(week.end);
     const weekDailyAvg = weekElapsed > 0 ? weeklyRealized / weekElapsed : 0;
@@ -234,6 +208,28 @@ const Dashboard = () => {
     ];
   }, [dailyGoal, weeklyGoal, monthlyGoal, totalValue, weeklyRealized, monthlyRealized, week, month]);
 
+  // Monthly projection
+  const monthProjection = useMemo(() => {
+    const monthElapsed = daysElapsed(month.start);
+    const monthRemain = daysRemaining(month.end);
+    const monthDailyAvg = monthElapsed > 0 ? monthlyRealized / monthElapsed : 0;
+    return monthlyRealized + monthDailyAvg * monthRemain;
+  }, [monthlyRealized, month]);
+
+  const monthGap = monthlyGoal > 0 ? monthlyGoal - monthProjection : 0;
+  const monthRemain = daysRemaining(month.end);
+
+  // Daily priority message
+  const dailyPriority = useMemo(() => {
+    if (dailyGoal > 0 && remaining > 0) {
+      return { message: `Faltam ${formatBRL(remaining)} para sua meta de hoje`, severity: remaining > dailyGoal * 0.5 ? "critical" as const : "warning" as const };
+    }
+    if (dailyGoal > 0 && totalValue >= dailyGoal) {
+      return { message: "Meta do dia atingida! Continue vendendo para superar", severity: "info" as const };
+    }
+    return { message: "Inicie um atendimento para começar o dia", severity: "info" as const };
+  }, [dailyGoal, remaining, totalValue]);
+
   if (loading) {
     return (
       <AppLayout>
@@ -248,7 +244,7 @@ const Dashboard = () => {
     <AppLayout>
       <div className="md:ml-64">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-          {/* Header */}
+          {/* 1) Header with dynamic status */}
           <motion.div {...fadeUp} className="space-y-1">
             <p className="text-sm text-muted-foreground">{getGreeting()},</p>
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">{userName} 👋</h1>
@@ -263,18 +259,64 @@ const Dashboard = () => {
             )}
           </motion.div>
 
-          {/* Quick Ranking Summary */}
+          {/* 2) Prioridade do Dia */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.03 }}>
+            <DailyPriority message={dailyPriority.message} severity={dailyPriority.severity} />
+          </motion.div>
+
+          {/* 3) Quick Ranking Summary */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}>
             <QuickRankingSummary dailyRanking={dailyRanking} currentUserId={user?.id || ""} />
           </motion.div>
 
-          {/* Goal Cards — Daily / Weekly / Monthly */}
+          {/* 4) Goal Cards */}
           <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.08 }}>
             <SellerGoalCards periods={goalPeriods} />
           </motion.div>
 
-          {/* Contextual Messages */}
-          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+          {/* 5) Risco de Meta + Velocidade Necessária */}
+          {monthlyGoal > 0 && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.09 }} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <MetaRiskIndicator
+                goal={monthlyGoal}
+                realized={monthlyRealized}
+                projection={monthProjection}
+                daysRemaining={monthRemain}
+              />
+              <RequiredVelocity
+                goal={monthlyGoal}
+                realized={monthlyRealized}
+                daysRemaining={monthRemain}
+              />
+            </motion.div>
+          )}
+
+          {/* 6) Déficit / Superávit */}
+          {monthlyGoal > 0 && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
+              <div className={`rounded-2xl p-4 shadow-card border ${monthGap > 0 ? "border-destructive/20 bg-destructive/5" : "border-success/20 bg-success/5"}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  {monthGap > 0 ? (
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4 text-success" />
+                  )}
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {monthGap > 0 ? "Déficit estimado" : "Meta será superada"}
+                  </span>
+                </div>
+                <p className={`text-xl font-semibold tabular-nums ${monthGap > 0 ? "text-destructive" : "text-success"}`}>
+                  {formatBRL(Math.abs(monthGap))}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {monthGap > 0 ? "Baseado na projeção no ritmo atual" : "Projeção indica que a meta será superada"}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* 7) Contextual Messages / Insights */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
             <ContextualMessages
               dailyRanking={dailyRanking}
               currentUserId={user?.id || ""}
@@ -283,16 +325,19 @@ const Dashboard = () => {
             />
           </motion.div>
 
-          {/* Metrics Grid */}
-          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }} className="grid grid-cols-2 gap-3">
-            <MetricCard label="Vendas" value={(metrics?.won_sales || 0).toString()} icon={ShoppingCart} />
-            <MetricCard label="Conversão" value={`${metrics?.conversion_rate || 0}%`} icon={BarChart3} />
-            <MetricCard label="Ticket Médio" value={formatBRL(metrics?.avg_ticket || 0)} icon={TrendingUp} />
-            <MetricCard label="P.A. Médio" value={(metrics?.avg_pa || 0).toFixed(1)} icon={ShoppingCart} />
+          {/* 8) KPIs Operacionais */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Indicadores Operacionais</p>
+            <div className="grid grid-cols-2 gap-3">
+              <MetricCard label="Vendas" value={(metrics?.won_sales || 0).toString()} icon={ShoppingCart} />
+              <MetricCard label="Conversão" value={`${metrics?.conversion_rate || 0}%`} icon={BarChart3} />
+              <MetricCard label="Ticket Médio" value={formatBRL(metrics?.avg_ticket || 0)} icon={TrendingUp} />
+              <MetricCard label="P.A. Médio" value={(metrics?.avg_pa || 0).toFixed(1)} icon={ShoppingCart} />
+            </div>
           </motion.div>
 
-          {/* Rankings */}
-          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }}>
+          {/* 9) Rankings */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.17 }}>
             <SellerRankingTabs
               daily={dailyRanking}
               weekly={weeklyRanking}
@@ -302,7 +347,7 @@ const Dashboard = () => {
             />
           </motion.div>
 
-          {/* Lost Attendances */}
+          {/* 10) Lost Attendances */}
           {lostSales.length > 0 && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} className="space-y-3">
               <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendimentos Perdidos</h2>
@@ -325,7 +370,7 @@ const Dashboard = () => {
             </motion.div>
           )}
 
-          {/* Culture snippet */}
+          {/* Culture */}
           {culture?.mission && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.25 }} className="bg-card rounded-2xl p-4 shadow-card cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate("/culture")}>
               <div className="flex items-center gap-2 mb-2">
