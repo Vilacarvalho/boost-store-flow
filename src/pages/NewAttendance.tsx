@@ -479,6 +479,49 @@ const NewAttendance = () => {
             </div>
           </FieldGroup>
 
+          {/* 1.5 Sale Category */}
+          <FieldGroup label="Categoria da Venda *">
+            <div className="grid grid-cols-2 gap-2">
+              {saleCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSaleCategory(c.id)}
+                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                    saleCategory === c.id
+                      ? "border-primary bg-primary/5"
+                      : "border-transparent bg-secondary/50 hover:bg-secondary"
+                  }`}
+                >
+                  <span className="text-lg">{c.emoji}</span>
+                  <span className="text-xs font-medium text-foreground">{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </FieldGroup>
+
+          {/* 1.6 Subcategory for "outros" */}
+          {saleCategory === "outros" && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+              <FieldGroup label="Subcategoria (opcional)">
+                <div className="grid grid-cols-2 gap-2">
+                  {outrosSubcategories.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSaleSubcategory(saleSubcategory === s.id ? "" : s.id)}
+                      className={`p-3 rounded-xl border-2 text-center transition-all ${
+                        saleSubcategory === s.id
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent bg-secondary/50 hover:bg-secondary"
+                      }`}
+                    >
+                      <span className="text-xs font-medium text-foreground">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </FieldGroup>
+            </motion.div>
+          )}
+
           {/* 2. Result */}
           <FieldGroup label="Resultado *">
             <div className="grid grid-cols-2 gap-2">
