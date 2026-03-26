@@ -712,6 +712,8 @@ export type Database = {
           product_type: string | null
           products_count: number | null
           products_shown_count: number | null
+          sale_category: string | null
+          sale_subcategory: string | null
           seller_id: string
           status: Database["public"]["Enums"]["sale_status"]
           store_id: string
@@ -730,6 +732,8 @@ export type Database = {
           product_type?: string | null
           products_count?: number | null
           products_shown_count?: number | null
+          sale_category?: string | null
+          sale_subcategory?: string | null
           seller_id: string
           status: Database["public"]["Enums"]["sale_status"]
           store_id: string
@@ -748,6 +752,8 @@ export type Database = {
           product_type?: string | null
           products_count?: number | null
           products_shown_count?: number | null
+          sale_category?: string | null
+          sale_subcategory?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["sale_status"]
           store_id?: string
@@ -913,6 +919,44 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      turn_queue: {
+        Row: {
+          entered_at: string
+          id: string
+          position: number
+          seller_id: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          entered_at?: string
+          id?: string
+          position?: number
+          seller_id: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          entered_at?: string
+          id?: string
+          position?: number
+          seller_id?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turn_queue_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
