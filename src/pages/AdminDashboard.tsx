@@ -333,8 +333,41 @@ const AdminDashboard = () => {
   const networkMonthRemain = daysRemaining(month.end);
 
   // ── Store-level computed values ──
-  const storeTotalValue = storeMetrics?.total_value || 0;
+  // Use daily metrics from RPC for today's data
+  const storeTodayValue = storeMetrics?.total_value || 0;
+  // Also compute today's total from daily ranking for consistency check
+  const storeDailyRankingTotal = storeDailyRanking.reduce((s, r) => s + r.total_value, 0);
+  // Use the higher of the two to avoid showing 0 when data exists
+  const storeTotalValue = Math.max(storeTodayValue, storeDailyRankingTotal);
   const storeDailyRemaining = Math.max(0, storeDailyGoal - storeTotalValue);
+
+  // Compute store KPIs from ranking data (same source as ranking component) for consistency
+  const storeKPIs = useMemo(() => {
+    // Daily KPIs from daily ranking data
+    const dWon = storeDailyRanking.reduce((s, r) => s + r.won_count, 0);
+    const dTotal = storeDailyRanking.reduce((s, r) => s + r.total_count, 0);
+    const dValue = storeDailyRanking.reduce((s, r) => s + r.total_value, 0);
+    const dConv = dTotal > 0 ? (dWon / dTotal) * 100 : 0;
+    const dTicket = dWon > 0 ? dValue / dWon : 0;
+    const dPa = storeDailyRanking.filter(r => r.avg_pa > 0).length > 0
+      ? storeDailyRanking.reduce((s, r) => s + (r.avg_pa || 0), 0) / storeDailyRanking.filter(r => r.avg_pa > 0).length
+      : 0;
+
+    // Monthly KPIs from monthly ranking data
+    const mWon = storeMonthlyRanking.reduce((s, r) => s + r.won_count, 0);
+    const mTotal = storeMonthlyRanking.reduce((s, r) => s + r.total_count, 0);
+    const mValue = storeMonthlyRanking.reduce((s, r) => s + r.total_value, 0);
+    const mConv = mTotal > 0 ? (mWon / mTotal) * 100 : 0;
+    const mTicket = mWon > 0 ? mValue / mWon : 0;
+    const mPa = storeMonthlyRanking.filter(r => r.avg_pa > 0).length > 0
+      ? storeMonthlyRanking.reduce((s, r) => s + (r.avg_pa || 0), 0) / storeMonthlyRanking.filter(r => r.avg_pa > 0).length
+      : 0;
+
+    return {
+      daily: { total_value: dValue, conversion_rate: dConv, avg_ticket: dTicket, avg_pa: dPa, total_sales: dTotal, won_sales: dWon },
+      monthly: { total_value: mValue, conversion_rate: mConv, avg_ticket: mTicket, avg_pa: mPa, total_sales: mTotal, won_sales: mWon },
+    };
+  }, [storeDailyRanking, storeMonthlyRanking]);
 
   const storeGoalPeriods = useMemo(() => {
     const weekElapsed = daysElapsed(week.start);
