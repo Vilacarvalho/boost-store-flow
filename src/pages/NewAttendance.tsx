@@ -32,6 +32,20 @@ const productTypes = [
   { id: "lente", label: "Lente", emoji: "🔍" },
 ];
 
+const saleCategories = [
+  { id: "lentes", label: "Lentes", emoji: "🔍" },
+  { id: "armacao", label: "Armação", emoji: "👓" },
+  { id: "solar", label: "Solar", emoji: "🕶️" },
+  { id: "outros", label: "Outros", emoji: "📦" },
+];
+
+const outrosSubcategories = [
+  { id: "conserto", label: "Conserto" },
+  { id: "acessorio", label: "Acessório" },
+  { id: "limpeza", label: "Limpeza" },
+  { id: "servico", label: "Serviço" },
+];
+
 const lossReasons = [
   "Modelo indisponível", "Preço", "Vai comparar",
   "Retorna depois", "Sem receita", "Outro",
@@ -43,6 +57,8 @@ interface AttendanceDraft {
   customerName: string;
   customerPhone: string;
   productType: string;
+  saleCategory: string;
+  saleSubcategory: string;
   result: "won" | "lost" | "";
   objectionReason: string;
   objectionDescription: string;
@@ -55,6 +71,8 @@ const INITIAL_DRAFT: AttendanceDraft = {
   customerName: "",
   customerPhone: "",
   productType: "",
+  saleCategory: "",
+  saleSubcategory: "",
   result: "",
   objectionReason: "",
   objectionDescription: "",
@@ -82,6 +100,10 @@ const NewAttendance = () => {
   const setCustomerPhone = (v: string) => draft.setValues(prev => ({ ...prev, customerPhone: v }));
   const productType = draft.values.productType;
   const setProductType = (v: string) => draft.setValues(prev => ({ ...prev, productType: v }));
+  const saleCategory = draft.values.saleCategory;
+  const setSaleCategory = (v: string) => draft.setValues(prev => ({ ...prev, saleCategory: v, saleSubcategory: v !== "outros" ? "" : prev.saleSubcategory }));
+  const saleSubcategory = draft.values.saleSubcategory;
+  const setSaleSubcategory = (v: string) => draft.setValues(prev => ({ ...prev, saleSubcategory: v }));
   const result = draft.values.result;
   const setResult = (v: "won" | "lost" | "") => draft.setValues(prev => ({ ...prev, result: v }));
   const objectionReason = draft.values.objectionReason;
@@ -208,7 +230,7 @@ const NewAttendance = () => {
   /* ── validation ──────────────────────────────── */
 
   const canSubmit = () => {
-    if (!productType || !result) return false;
+    if (!productType || !result || !saleCategory) return false;
     if (result === "lost") {
       if (!objectionReason) return false;
       if (objectionReason === "Outro" && !objectionDescription.trim()) return false;
@@ -284,13 +306,15 @@ const NewAttendance = () => {
         customer_id: customerId,
         status: result as "won" | "lost",
         product_type: productType,
+        sale_category: saleCategory,
+        sale_subcategory: saleCategory === "outros" && saleSubcategory ? saleSubcategory : null,
         objection_reason: result === "lost" ? objectionReason : null,
         objection_description: result === "lost" && objectionReason === "Outro" ? objectionDescription : null,
         notes: notes || null,
         products_count: result === "won" ? productsCount : 0,
         total_value: result === "won" ? parseBRL(totalValue) : 0,
         products_shown_count: result === "won" ? productsCount : 0,
-      });
+      } as any);
 
       if (error) throw error;
 
@@ -454,6 +478,49 @@ const NewAttendance = () => {
               ))}
             </div>
           </FieldGroup>
+
+          {/* 1.5 Sale Category */}
+          <FieldGroup label="Categoria da Venda *">
+            <div className="grid grid-cols-2 gap-2">
+              {saleCategories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSaleCategory(c.id)}
+                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                    saleCategory === c.id
+                      ? "border-primary bg-primary/5"
+                      : "border-transparent bg-secondary/50 hover:bg-secondary"
+                  }`}
+                >
+                  <span className="text-lg">{c.emoji}</span>
+                  <span className="text-xs font-medium text-foreground">{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </FieldGroup>
+
+          {/* 1.6 Subcategory for "outros" */}
+          {saleCategory === "outros" && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+              <FieldGroup label="Subcategoria (opcional)">
+                <div className="grid grid-cols-2 gap-2">
+                  {outrosSubcategories.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSaleSubcategory(saleSubcategory === s.id ? "" : s.id)}
+                      className={`p-3 rounded-xl border-2 text-center transition-all ${
+                        saleSubcategory === s.id
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent bg-secondary/50 hover:bg-secondary"
+                      }`}
+                    >
+                      <span className="text-xs font-medium text-foreground">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </FieldGroup>
+            </motion.div>
+          )}
 
           {/* 2. Result */}
           <FieldGroup label="Resultado *">

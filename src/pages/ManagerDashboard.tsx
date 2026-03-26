@@ -14,6 +14,8 @@ import StoreActionPlans from "@/components/supervisor/StoreActionPlans";
 import DailyPriority from "@/components/dashboard/DailyPriority";
 import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
 import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
+import CategoryAnalytics from "@/components/dashboard/CategoryAnalytics";
+import TurnQueue from "@/components/turn-queue/TurnQueue";
 
 interface Metrics {
   total_sales: number;
@@ -339,8 +341,22 @@ const ManagerDashboard = () => {
             />
           </motion.div>
 
-          {/* 11) Planos de ação */}
-          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }}>
+          {/* 11) Lista da Vez */}
+          {profile?.store_id && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }}>
+              <TurnQueue storeId={profile.store_id} />
+            </motion.div>
+          )}
+
+          {/* 12) Category Analytics */}
+          {profile?.store_id && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.22 }}>
+              <CategoryAnalytics storeId={profile.store_id} startDate={month.start} endDate={month.end} />
+            </motion.div>
+          )}
+
+          {/* 13) Planos de ação */}
+          <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.24 }}>
             <StoreActionPlans
               stores={[{ id: profile?.store_id || "", name: "" }]}
               readOnly

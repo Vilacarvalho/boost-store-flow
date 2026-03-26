@@ -14,6 +14,7 @@ import ContextualMessages from "@/components/dashboard/ContextualMessages";
 import DailyPriority from "@/components/dashboard/DailyPriority";
 import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
 import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
+import TurnQueue from "@/components/turn-queue/TurnQueue";
 
 interface Metrics {
   total_sales: number;
@@ -346,6 +347,13 @@ const Dashboard = () => {
               goalAchievement={goalAchievement}
             />
           </motion.div>
+
+          {/* 9.5) Turn Queue */}
+          {profile?.store_id && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.18 }}>
+              <TurnQueue storeId={profile.store_id} compact />
+            </motion.div>
+          )}
 
           {/* 10) Lost Attendances */}
           {lostSales.length > 0 && (
