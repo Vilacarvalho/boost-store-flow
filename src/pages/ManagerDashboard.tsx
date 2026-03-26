@@ -14,6 +14,8 @@ import StoreActionPlans from "@/components/supervisor/StoreActionPlans";
 import DailyPriority from "@/components/dashboard/DailyPriority";
 import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
 import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
+import CategoryAnalytics from "@/components/dashboard/CategoryAnalytics";
+import TurnQueue from "@/components/turn-queue/TurnQueue";
 
 interface Metrics {
   total_sales: number;
