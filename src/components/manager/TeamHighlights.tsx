@@ -4,9 +4,10 @@ import { formatBRL } from "@/lib/currency";
 
 interface TeamHighlightsProps {
   dailyRanking: RankingEntry[];
+  periodLabel?: string;
 }
 
-const TeamHighlights = ({ dailyRanking }: TeamHighlightsProps) => {
+const TeamHighlights = ({ dailyRanking, periodLabel = "Hoje" }: TeamHighlightsProps) => {
   if (!dailyRanking.length) return null;
 
   const byRevenue = [...dailyRanking].sort((a, b) => b.total_value - a.total_value);
@@ -29,7 +30,7 @@ const TeamHighlights = ({ dailyRanking }: TeamHighlightsProps) => {
     <div className="space-y-3">
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
         <Trophy className="h-3.5 w-3.5 text-warning" />
-        Destaques do Dia
+        Destaques — {periodLabel}
       </h2>
       <div className="grid grid-cols-3 gap-2">
         {highlights.map((h) => (

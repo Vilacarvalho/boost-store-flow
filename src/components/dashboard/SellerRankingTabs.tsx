@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Trophy, TrendingUp, BarChart3, Target } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBRL } from "@/lib/currency";
@@ -21,6 +21,9 @@ interface SellerRankingTabsProps {
   currentUserId: string;
   /** Goal achievement data keyed by seller_id */
   goalAchievement?: Record<string, { pct: number }>;
+  /** External period control */
+  initialPeriod?: string;
+  onPeriodChange?: (period: string) => void;
 }
 
 type SortMode = "revenue" | "ticket" | "conversion" | "goal";
@@ -31,9 +34,23 @@ const SellerRankingTabs = ({
   monthly,
   currentUserId,
   goalAchievement,
+  initialPeriod,
+  onPeriodChange,
 }: SellerRankingTabsProps) => {
-  const [period, setPeriod] = useState("daily");
+  const [period, setPeriod] = useState(initialPeriod || "daily");
   const [sort, setSort] = useState<SortMode>("revenue");
+
+  // Sync with external period control
+  useEffect(() => {
+    if (initialPeriod && initialPeriod !== period) {
+      setPeriod(initialPeriod);
+    }
+  }, [initialPeriod]);
+
+  const handlePeriodChange = (value: string) => {
+    setPeriod(value);
+    onPeriodChange?.(value);
+  };
 
   const dataMap: Record<string, RankingEntry[]> = { daily, weekly, monthly };
   const raw = dataMap[period] || [];
@@ -74,7 +91,7 @@ const SellerRankingTabs = ({
       </div>
 
       {/* Period tabs */}
-      <Tabs value={period} onValueChange={setPeriod}>
+      <Tabs value={period} onValueChange={handlePeriodChange}>
         <TabsList className="w-full">
           <TabsTrigger value="daily" className="flex-1 text-xs">Hoje</TabsTrigger>
           <TabsTrigger value="weekly" className="flex-1 text-xs">Semana</TabsTrigger>

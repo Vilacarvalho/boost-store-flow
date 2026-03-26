@@ -5,6 +5,7 @@ import {
   TrendingUp, Target, ShoppingCart, BarChart3, AlertTriangle,
   Store, Users, Calculator, BookOpen, PieChart, Calendar,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -142,6 +143,7 @@ const AdminDashboard = () => {
 
   const isStoreView = selectedScope !== "network";
   const selectedStoreName = storeList.find(s => s.id === selectedScope)?.name || "";
+  const [storePeriod, setStorePeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
 
   const handleScopeChange = useCallback((scope: string) => {
     setSelectedScope(scope);
@@ -343,31 +345,28 @@ const AdminDashboard = () => {
 
   // Compute store KPIs from ranking data (same source as ranking component) for consistency
   const storeKPIs = useMemo(() => {
-    // Daily KPIs from daily ranking data
-    const dWon = storeDailyRanking.reduce((s, r) => s + r.won_count, 0);
-    const dTotal = storeDailyRanking.reduce((s, r) => s + r.total_count, 0);
-    const dValue = storeDailyRanking.reduce((s, r) => s + r.total_value, 0);
-    const dConv = dTotal > 0 ? (dWon / dTotal) * 100 : 0;
-    const dTicket = dWon > 0 ? dValue / dWon : 0;
-    const dPa = storeDailyRanking.filter(r => r.avg_pa > 0).length > 0
-      ? storeDailyRanking.reduce((s, r) => s + (r.avg_pa || 0), 0) / storeDailyRanking.filter(r => r.avg_pa > 0).length
-      : 0;
-
-    // Monthly KPIs from monthly ranking data
-    const mWon = storeMonthlyRanking.reduce((s, r) => s + r.won_count, 0);
-    const mTotal = storeMonthlyRanking.reduce((s, r) => s + r.total_count, 0);
-    const mValue = storeMonthlyRanking.reduce((s, r) => s + r.total_value, 0);
-    const mConv = mTotal > 0 ? (mWon / mTotal) * 100 : 0;
-    const mTicket = mWon > 0 ? mValue / mWon : 0;
-    const mPa = storeMonthlyRanking.filter(r => r.avg_pa > 0).length > 0
-      ? storeMonthlyRanking.reduce((s, r) => s + (r.avg_pa || 0), 0) / storeMonthlyRanking.filter(r => r.avg_pa > 0).length
-      : 0;
-
-    return {
-      daily: { total_value: dValue, conversion_rate: dConv, avg_ticket: dTicket, avg_pa: dPa, total_sales: dTotal, won_sales: dWon },
-      monthly: { total_value: mValue, conversion_rate: mConv, avg_ticket: mTicket, avg_pa: mPa, total_sales: mTotal, won_sales: mWon },
+    const computeKPIs = (ranking: RankingEntry[]) => {
+      const won = ranking.reduce((s, r) => s + r.won_count, 0);
+      const total = ranking.reduce((s, r) => s + r.total_count, 0);
+      const value = ranking.reduce((s, r) => s + r.total_value, 0);
+      const conv = total > 0 ? (won / total) * 100 : 0;
+      const ticket = won > 0 ? value / won : 0;
+      const withPa = ranking.filter(r => r.avg_pa > 0);
+      const pa = withPa.length > 0 ? withPa.reduce((s, r) => s + (r.avg_pa || 0), 0) / withPa.length : 0;
+      return { total_value: value, conversion_rate: conv, avg_ticket: ticket, avg_pa: pa, total_sales: total, won_sales: won };
     };
-  }, [storeDailyRanking, storeMonthlyRanking]);
+    return {
+      daily: computeKPIs(storeDailyRanking),
+      weekly: computeKPIs(storeWeeklyRanking),
+      monthly: computeKPIs(storeMonthlyRanking),
+    };
+  }, [storeDailyRanking, storeWeeklyRanking, storeMonthlyRanking]);
+
+  // Active ranking and KPIs based on selected period
+  const activeStoreRanking = storePeriod === "daily" ? storeDailyRanking : storePeriod === "weekly" ? storeWeeklyRanking : storeMonthlyRanking;
+  const activeStoreKPIs = storeKPIs[storePeriod];
+  const periodLabel = storePeriod === "daily" ? "Hoje" : storePeriod === "weekly" ? "Semana" : "Mês";
+
 
   const storeGoalPeriods = useMemo(() => {
     const weekElapsed = daysElapsed(week.start);
@@ -600,16 +599,27 @@ const AdminDashboard = () => {
           {/* ── STORE VIEW ── */}
           {isStoreView && storeMetrics && (
             <>
+              {/* Period selector */}
+              <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.09 }}>
+                <Tabs value={storePeriod} onValueChange={(v) => setStorePeriod(v as "daily" | "weekly" | "monthly")}>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="daily" className="flex-1 text-xs">Hoje</TabsTrigger>
+                    <TabsTrigger value="weekly" className="flex-1 text-xs">Semana</TabsTrigger>
+                    <TabsTrigger value="monthly" className="flex-1 text-xs">Mês</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </motion.div>
+
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }}>
                 <StoreInsights
-                  dailyRanking={storeDailyRanking}
+                  dailyRanking={activeStoreRanking}
                   storeMetrics={{
-                    total_value: storeKPIs.daily.total_value,
-                    conversion_rate: storeKPIs.daily.conversion_rate,
-                    avg_ticket: storeKPIs.daily.avg_ticket,
-                    total_attendances: storeKPIs.daily.total_sales,
+                    total_value: activeStoreKPIs.total_value,
+                    conversion_rate: activeStoreKPIs.conversion_rate,
+                    avg_ticket: activeStoreKPIs.avg_ticket,
+                    total_attendances: activeStoreKPIs.total_sales,
                   }}
-                  dailyGoal={storeDailyGoal}
+                  dailyGoal={storePeriod === "daily" ? storeDailyGoal : storePeriod === "weekly" ? storeWeeklyGoal : storeMonthlyGoal}
                   weeklyGoal={storeWeeklyGoal}
                   weeklyRealized={storeWeeklyRealized}
                   monthlyGoal={storeMonthlyGoal}
@@ -618,35 +628,43 @@ const AdminDashboard = () => {
               </motion.div>
 
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Indicadores da Loja (Mês)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Indicadores da Loja — {periodLabel}
+                </p>
                 <div className="grid grid-cols-2 gap-3">
-                  <MetricCard label="Faturamento" value={formatBRL(storeKPIs.monthly.total_value)} icon={TrendingUp} />
-                  <MetricCard label="Conversão" value={`${storeKPIs.monthly.conversion_rate.toFixed(1)}%`} icon={BarChart3} />
-                  <MetricCard label="Ticket Médio" value={formatBRL(storeKPIs.monthly.avg_ticket)} icon={ShoppingCart} />
-                  <MetricCard label="P.A. Médio" value={storeKPIs.monthly.avg_pa.toFixed(1)} icon={ShoppingCart} />
+                  <MetricCard label="Faturamento" value={formatBRL(activeStoreKPIs.total_value)} icon={TrendingUp} />
+                  <MetricCard label="Conversão" value={`${activeStoreKPIs.conversion_rate.toFixed(1)}%`} icon={BarChart3} />
+                  <MetricCard label="Ticket Médio" value={formatBRL(activeStoreKPIs.avg_ticket)} icon={ShoppingCart} />
+                  <MetricCard label="P.A. Médio" value={activeStoreKPIs.avg_pa.toFixed(1)} icon={ShoppingCart} />
                 </div>
               </motion.div>
 
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.14 }}>
-                <TeamHighlights dailyRanking={storeDailyRanking} />
+                <TeamHighlights dailyRanking={activeStoreRanking} periodLabel={periodLabel} />
               </motion.div>
 
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.16 }}>
                 <TeamAlerts
-                  dailyRanking={storeDailyRanking}
-                  dailyGoal={storeDailyGoalPerSeller}
-                  storeAvgConversion={storeAvgConversion}
-                  storeAvgTicket={storeAvgTicket}
+                  dailyRanking={activeStoreRanking}
+                  dailyGoal={storePeriod === "daily" ? storeDailyGoalPerSeller : storePeriod === "weekly" ? (storeWeeklyGoal > 0 && activeStoreRanking.length > 0 ? storeWeeklyGoal / activeStoreRanking.length : 0) : (storeMonthlyGoal > 0 && activeStoreRanking.length > 0 ? storeMonthlyGoal / activeStoreRanking.length : 0)}
+                  storeAvgConversion={activeStoreRanking.length > 0 ? activeStoreRanking.reduce((s, r) => s + r.conversion_rate, 0) / activeStoreRanking.length : 0}
+                  storeAvgTicket={activeStoreRanking.length > 0 ? activeStoreRanking.reduce((s, r) => s + (r.avg_ticket || 0), 0) / activeStoreRanking.length : 0}
+                  periodLabel={periodLabel}
                 />
               </motion.div>
 
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.18 }}>
+                <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                  Ranking da Equipe — {periodLabel}
+                </h2>
                 <SellerRankingTabs
                   daily={storeDailyRanking}
                   weekly={storeWeeklyRanking}
                   monthly={storeMonthlyRanking}
                   currentUserId={user?.id || ""}
                   goalAchievement={storeGoalAchievement}
+                  initialPeriod={storePeriod}
+                  onPeriodChange={(p) => setStorePeriod(p as "daily" | "weekly" | "monthly")}
                 />
               </motion.div>
             </>
