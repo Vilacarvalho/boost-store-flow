@@ -32,6 +32,20 @@ const productTypes = [
   { id: "lente", label: "Lente", emoji: "🔍" },
 ];
 
+const saleCategories = [
+  { id: "lentes", label: "Lentes", emoji: "🔍" },
+  { id: "armacao", label: "Armação", emoji: "👓" },
+  { id: "solar", label: "Solar", emoji: "🕶️" },
+  { id: "outros", label: "Outros", emoji: "📦" },
+];
+
+const outrosSubcategories = [
+  { id: "conserto", label: "Conserto" },
+  { id: "acessorio", label: "Acessório" },
+  { id: "limpeza", label: "Limpeza" },
+  { id: "servico", label: "Serviço" },
+];
+
 const lossReasons = [
   "Modelo indisponível", "Preço", "Vai comparar",
   "Retorna depois", "Sem receita", "Outro",
@@ -43,6 +57,8 @@ interface AttendanceDraft {
   customerName: string;
   customerPhone: string;
   productType: string;
+  saleCategory: string;
+  saleSubcategory: string;
   result: "won" | "lost" | "";
   objectionReason: string;
   objectionDescription: string;
@@ -55,6 +71,8 @@ const INITIAL_DRAFT: AttendanceDraft = {
   customerName: "",
   customerPhone: "",
   productType: "",
+  saleCategory: "",
+  saleSubcategory: "",
   result: "",
   objectionReason: "",
   objectionDescription: "",
