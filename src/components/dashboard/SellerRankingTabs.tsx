@@ -91,7 +91,7 @@ const SellerRankingTabs = ({
       </div>
 
       {/* Period tabs */}
-      <Tabs value={period} onValueChange={setPeriod}>
+      <Tabs value={period} onValueChange={handlePeriodChange}>
         <TabsList className="w-full">
           <TabsTrigger value="daily" className="flex-1 text-xs">Hoje</TabsTrigger>
           <TabsTrigger value="weekly" className="flex-1 text-xs">Semana</TabsTrigger>
