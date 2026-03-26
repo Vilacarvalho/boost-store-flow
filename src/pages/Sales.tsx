@@ -6,6 +6,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/currency";
+import TurnQueue from "@/components/turn-queue/TurnQueue";
 
 const productTypeLabels: Record<string, string> = {
   solar: "Solar",
@@ -99,6 +100,11 @@ const Sales = () => {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Vendas</h1>
             <p className="text-sm text-muted-foreground">Hoje</p>
           </div>
+
+          {/* Turn Queue */}
+          {profile?.store_id && (
+            <TurnQueue storeId={profile.store_id} />
+          )}
 
           <div className="space-y-3">
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendimentos de Hoje</h2>
