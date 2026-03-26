@@ -306,13 +306,15 @@ const NewAttendance = () => {
         customer_id: customerId,
         status: result as "won" | "lost",
         product_type: productType,
+        sale_category: saleCategory,
+        sale_subcategory: saleCategory === "outros" && saleSubcategory ? saleSubcategory : null,
         objection_reason: result === "lost" ? objectionReason : null,
         objection_description: result === "lost" && objectionReason === "Outro" ? objectionDescription : null,
         notes: notes || null,
         products_count: result === "won" ? productsCount : 0,
         total_value: result === "won" ? parseBRL(totalValue) : 0,
         products_shown_count: result === "won" ? productsCount : 0,
-      });
+      } as any);
 
       if (error) throw error;
 
