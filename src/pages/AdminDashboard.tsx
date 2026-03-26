@@ -618,12 +618,12 @@ const AdminDashboard = () => {
               </motion.div>
 
               <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.12 }}>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Indicadores da Loja</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Indicadores da Loja (Mês)</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <MetricCard label="Faturamento" value={formatBRL(storeMetrics.total_value)} icon={TrendingUp} />
-                  <MetricCard label="Conversão" value={`${storeMetrics.conversion_rate}%`} icon={BarChart3} />
-                  <MetricCard label="Ticket Médio" value={formatBRL(storeMetrics.avg_ticket)} icon={ShoppingCart} />
-                  <MetricCard label="P.A. Médio" value={(storeMetrics.avg_pa || 0).toFixed(1)} icon={ShoppingCart} />
+                  <MetricCard label="Faturamento" value={formatBRL(storeKPIs.monthly.total_value)} icon={TrendingUp} />
+                  <MetricCard label="Conversão" value={`${storeKPIs.monthly.conversion_rate.toFixed(1)}%`} icon={BarChart3} />
+                  <MetricCard label="Ticket Médio" value={formatBRL(storeKPIs.monthly.avg_ticket)} icon={ShoppingCart} />
+                  <MetricCard label="P.A. Médio" value={storeKPIs.monthly.avg_pa.toFixed(1)} icon={ShoppingCart} />
                 </div>
               </motion.div>
 
