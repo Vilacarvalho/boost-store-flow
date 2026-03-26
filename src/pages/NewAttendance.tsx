@@ -230,7 +230,7 @@ const NewAttendance = () => {
   /* ── validation ──────────────────────────────── */
 
   const canSubmit = () => {
-    if (!productType || !result) return false;
+    if (!productType || !result || !saleCategory) return false;
     if (result === "lost") {
       if (!objectionReason) return false;
       if (objectionReason === "Outro" && !objectionDescription.trim()) return false;
