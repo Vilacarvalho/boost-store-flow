@@ -490,7 +490,7 @@ const GoalPerformance = () => {
               </SelectContent>
             </Select>
 
-            {(role === "admin" || role === "super_admin") && stores.length > 0 && (
+            {(role === "admin" || role === "super_admin") && stores.length > 1 && (
               <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
                 <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
