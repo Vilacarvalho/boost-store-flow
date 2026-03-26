@@ -100,6 +100,10 @@ const NewAttendance = () => {
   const setCustomerPhone = (v: string) => draft.setValues(prev => ({ ...prev, customerPhone: v }));
   const productType = draft.values.productType;
   const setProductType = (v: string) => draft.setValues(prev => ({ ...prev, productType: v }));
+  const saleCategory = draft.values.saleCategory;
+  const setSaleCategory = (v: string) => draft.setValues(prev => ({ ...prev, saleCategory: v, saleSubcategory: v !== "outros" ? "" : prev.saleSubcategory }));
+  const saleSubcategory = draft.values.saleSubcategory;
+  const setSaleSubcategory = (v: string) => draft.setValues(prev => ({ ...prev, saleSubcategory: v }));
   const result = draft.values.result;
   const setResult = (v: "won" | "lost" | "") => draft.setValues(prev => ({ ...prev, result: v }));
   const objectionReason = draft.values.objectionReason;
