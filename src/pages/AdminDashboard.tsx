@@ -5,6 +5,7 @@ import {
   TrendingUp, Target, ShoppingCart, BarChart3, AlertTriangle,
   Store, Users, Calculator, BookOpen, PieChart, Calendar,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
