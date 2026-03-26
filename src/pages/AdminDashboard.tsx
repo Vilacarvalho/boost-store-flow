@@ -143,6 +143,7 @@ const AdminDashboard = () => {
 
   const isStoreView = selectedScope !== "network";
   const selectedStoreName = storeList.find(s => s.id === selectedScope)?.name || "";
+  const [storePeriod, setStorePeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
 
   const handleScopeChange = useCallback((scope: string) => {
     setSelectedScope(scope);
