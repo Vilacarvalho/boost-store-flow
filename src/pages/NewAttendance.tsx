@@ -329,7 +329,14 @@ const NewAttendance = () => {
       navigate(getDashboardByRole(role));
     } catch (err: any) {
       console.error(err);
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+      const isRLS = err.message?.includes("row-level security") || err.code === "42501";
+      toast({
+        title: "Erro ao salvar",
+        description: isRLS
+          ? "Não foi possível salvar. Verifique se sua loja e permissões estão configuradas corretamente."
+          : err.message,
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
