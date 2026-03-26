@@ -348,6 +348,13 @@ const Dashboard = () => {
             />
           </motion.div>
 
+          {/* 9.5) Turn Queue */}
+          {profile?.store_id && (
+            <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.18 }}>
+              <TurnQueue storeId={profile.store_id} compact />
+            </motion.div>
+          )}
+
           {/* 10) Lost Attendances */}
           {lostSales.length > 0 && (
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} className="space-y-3">
