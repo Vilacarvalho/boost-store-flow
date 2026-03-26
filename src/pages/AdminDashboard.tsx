@@ -604,10 +604,10 @@ const AdminDashboard = () => {
                 <StoreInsights
                   dailyRanking={storeDailyRanking}
                   storeMetrics={{
-                    total_value: storeMetrics.total_value,
-                    conversion_rate: storeMetrics.conversion_rate,
-                    avg_ticket: storeMetrics.avg_ticket,
-                    total_attendances: storeMetrics.total_attendances,
+                    total_value: storeKPIs.daily.total_value,
+                    conversion_rate: storeKPIs.daily.conversion_rate,
+                    avg_ticket: storeKPIs.daily.avg_ticket,
+                    total_attendances: storeKPIs.daily.total_sales,
                   }}
                   dailyGoal={storeDailyGoal}
                   weeklyGoal={storeWeeklyGoal}
