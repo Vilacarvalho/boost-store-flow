@@ -80,28 +80,44 @@ const GoalsManagement = () => {
     goalId: string;
   } | null>(null);
 
+  const isManager = role === "manager";
+  const managerStoreId = profile?.store_id;
+
   const { data: stores = [] } = useQuery({
-    queryKey: ["admin-stores"],
+    queryKey: ["admin-stores", role, managerStoreId],
     queryFn: async () => {
-      const { data } = await supabase.from("stores").select("id, name").order("name");
+      let query = supabase.from("stores").select("id, name").order("name");
+      if (isManager && managerStoreId) {
+        query = query.eq("id", managerStoreId);
+      }
+      const { data } = await query;
       return data || [];
     },
     enabled: !!profile,
   });
 
   const { data: users = [] } = useQuery({
-    queryKey: ["admin-profiles-for-goals"],
+    queryKey: ["admin-profiles-for-goals", role, managerStoreId],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, name, store_id").order("name");
+      let query = supabase.from("profiles").select("id, name, store_id").order("name");
+      if (isManager && managerStoreId) {
+        query = query.eq("store_id", managerStoreId);
+      }
+      const { data } = await query;
       return data || [];
     },
     enabled: !!profile,
   });
 
   const { data: goals = [], isLoading } = useQuery({
-    queryKey: ["admin-goals"],
+    queryKey: ["admin-goals", role, managerStoreId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("goals").select("*").order("created_at", { ascending: false });
+      let query = supabase.from("goals").select("*").order("created_at", { ascending: false });
+      if (isManager && managerStoreId) {
+        query = query.or(`store_id.eq.${managerStoreId},user_id.not.is.null`);
+        query = query.or(`store_id.eq.${managerStoreId}`);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
