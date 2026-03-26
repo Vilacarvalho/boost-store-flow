@@ -158,11 +158,16 @@ const GoalPerformance = () => {
   useEffect(() => {
     if (role !== "admin" && role !== "manager" && role !== "super_admin") return;
     const fetchStores = async () => {
-      const { data } = await supabase.from("stores").select("id, name").eq("active", true);
+      let query = supabase.from("stores").select("id, name").eq("active", true);
+      // Managers only see their own store
+      if (role === "manager" && profile?.store_id) {
+        query = query.eq("id", profile.store_id);
+      }
+      const { data } = await query;
       if (data) setStores(data);
     };
     fetchStores();
-  }, [role]);
+  }, [role, profile?.store_id]);
 
   useEffect(() => {
     if (!profile || !user) return;
