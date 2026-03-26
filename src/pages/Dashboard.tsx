@@ -14,6 +14,7 @@ import ContextualMessages from "@/components/dashboard/ContextualMessages";
 import DailyPriority from "@/components/dashboard/DailyPriority";
 import MetaRiskIndicator from "@/components/dashboard/MetaRiskIndicator";
 import RequiredVelocity from "@/components/dashboard/RequiredVelocity";
+import TurnQueue from "@/components/turn-queue/TurnQueue";
 
 interface Metrics {
   total_sales: number;
