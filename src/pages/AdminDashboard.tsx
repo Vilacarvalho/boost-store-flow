@@ -345,31 +345,28 @@ const AdminDashboard = () => {
 
   // Compute store KPIs from ranking data (same source as ranking component) for consistency
   const storeKPIs = useMemo(() => {
-    // Daily KPIs from daily ranking data
-    const dWon = storeDailyRanking.reduce((s, r) => s + r.won_count, 0);
-    const dTotal = storeDailyRanking.reduce((s, r) => s + r.total_count, 0);
-    const dValue = storeDailyRanking.reduce((s, r) => s + r.total_value, 0);
-    const dConv = dTotal > 0 ? (dWon / dTotal) * 100 : 0;
-    const dTicket = dWon > 0 ? dValue / dWon : 0;
-    const dPa = storeDailyRanking.filter(r => r.avg_pa > 0).length > 0
-      ? storeDailyRanking.reduce((s, r) => s + (r.avg_pa || 0), 0) / storeDailyRanking.filter(r => r.avg_pa > 0).length
-      : 0;
-
-    // Monthly KPIs from monthly ranking data
-    const mWon = storeMonthlyRanking.reduce((s, r) => s + r.won_count, 0);
-    const mTotal = storeMonthlyRanking.reduce((s, r) => s + r.total_count, 0);
-    const mValue = storeMonthlyRanking.reduce((s, r) => s + r.total_value, 0);
-    const mConv = mTotal > 0 ? (mWon / mTotal) * 100 : 0;
-    const mTicket = mWon > 0 ? mValue / mWon : 0;
-    const mPa = storeMonthlyRanking.filter(r => r.avg_pa > 0).length > 0
-      ? storeMonthlyRanking.reduce((s, r) => s + (r.avg_pa || 0), 0) / storeMonthlyRanking.filter(r => r.avg_pa > 0).length
-      : 0;
-
-    return {
-      daily: { total_value: dValue, conversion_rate: dConv, avg_ticket: dTicket, avg_pa: dPa, total_sales: dTotal, won_sales: dWon },
-      monthly: { total_value: mValue, conversion_rate: mConv, avg_ticket: mTicket, avg_pa: mPa, total_sales: mTotal, won_sales: mWon },
+    const computeKPIs = (ranking: RankingEntry[]) => {
+      const won = ranking.reduce((s, r) => s + r.won_count, 0);
+      const total = ranking.reduce((s, r) => s + r.total_count, 0);
+      const value = ranking.reduce((s, r) => s + r.total_value, 0);
+      const conv = total > 0 ? (won / total) * 100 : 0;
+      const ticket = won > 0 ? value / won : 0;
+      const withPa = ranking.filter(r => r.avg_pa > 0);
+      const pa = withPa.length > 0 ? withPa.reduce((s, r) => s + (r.avg_pa || 0), 0) / withPa.length : 0;
+      return { total_value: value, conversion_rate: conv, avg_ticket: ticket, avg_pa: pa, total_sales: total, won_sales: won };
     };
-  }, [storeDailyRanking, storeMonthlyRanking]);
+    return {
+      daily: computeKPIs(storeDailyRanking),
+      weekly: computeKPIs(storeWeeklyRanking),
+      monthly: computeKPIs(storeMonthlyRanking),
+    };
+  }, [storeDailyRanking, storeWeeklyRanking, storeMonthlyRanking]);
+
+  // Active ranking and KPIs based on selected period
+  const activeStoreRanking = storePeriod === "daily" ? storeDailyRanking : storePeriod === "weekly" ? storeWeeklyRanking : storeMonthlyRanking;
+  const activeStoreKPIs = storeKPIs[storePeriod];
+  const periodLabel = storePeriod === "daily" ? "Hoje" : storePeriod === "weekly" ? "Semana" : "Mês";
+
 
   const storeGoalPeriods = useMemo(() => {
     const weekElapsed = daysElapsed(week.start);
