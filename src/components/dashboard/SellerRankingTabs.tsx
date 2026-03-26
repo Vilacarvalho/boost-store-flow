@@ -21,6 +21,9 @@ interface SellerRankingTabsProps {
   currentUserId: string;
   /** Goal achievement data keyed by seller_id */
   goalAchievement?: Record<string, { pct: number }>;
+  /** External period control */
+  initialPeriod?: string;
+  onPeriodChange?: (period: string) => void;
 }
 
 type SortMode = "revenue" | "ticket" | "conversion" | "goal";
@@ -31,9 +34,23 @@ const SellerRankingTabs = ({
   monthly,
   currentUserId,
   goalAchievement,
+  initialPeriod,
+  onPeriodChange,
 }: SellerRankingTabsProps) => {
-  const [period, setPeriod] = useState("daily");
+  const [period, setPeriod] = useState(initialPeriod || "daily");
   const [sort, setSort] = useState<SortMode>("revenue");
+
+  // Sync with external period control
+  useEffect(() => {
+    if (initialPeriod && initialPeriod !== period) {
+      setPeriod(initialPeriod);
+    }
+  }, [initialPeriod]);
+
+  const handlePeriodChange = (value: string) => {
+    setPeriod(value);
+    onPeriodChange?.(value);
+  };
 
   const dataMap: Record<string, RankingEntry[]> = { daily, weekly, monthly };
   const raw = dataMap[period] || [];

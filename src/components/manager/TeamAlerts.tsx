@@ -7,6 +7,7 @@ interface TeamAlertsProps {
   dailyGoal: number;
   storeAvgConversion: number;
   storeAvgTicket: number;
+  periodLabel?: string;
 }
 
 interface Alert {
@@ -15,7 +16,7 @@ interface Alert {
   icon: React.ElementType;
 }
 
-const TeamAlerts = ({ dailyRanking, dailyGoal, storeAvgConversion, storeAvgTicket }: TeamAlertsProps) => {
+const TeamAlerts = ({ dailyRanking, dailyGoal, storeAvgConversion, storeAvgTicket, periodLabel = "Hoje" }: TeamAlertsProps) => {
   const alerts: Alert[] = [];
 
   dailyRanking.forEach((s) => {
@@ -40,7 +41,7 @@ const TeamAlerts = ({ dailyRanking, dailyGoal, storeAvgConversion, storeAvgTicke
     <div className="space-y-3">
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
         <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-        Alertas da Equipe ({alerts.length})
+        Alertas da Equipe — {periodLabel} ({alerts.length})
       </h2>
       <div className="space-y-2">
         {alerts.slice(0, 6).map((a, i) => (
