@@ -6,19 +6,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { parseBRL, formatBRL, numberToBRLInput } from "@/lib/currency";
+import { parseBRL, formatBRL } from "@/lib/currency";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import PlanningModeSelector, { type PlanningMode } from "@/components/goal-planner/PlanningModeSelector";
 import ViabilityAlerts, { getViabilityAlerts, type ViabilityAlert } from "@/components/goal-planner/ViabilityAlerts";
 import { motion } from "framer-motion";
 import { TrendingUp } from "lucide-react";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { AutosaveIndicator } from "@/components/AutosaveIndicator";
+import { DraftRecoveryBanner } from "@/components/DraftRecoveryBanner";
+import { UnsavedChangesGuard } from "@/components/UnsavedChangesGuard";
 
 interface CalcResult {
   storeId: string;
@@ -62,6 +64,28 @@ function getViabilityStatus(alerts: ViabilityAlert[]): string {
   return "viable";
 }
 
+interface CalculatorDraft {
+  planningMode: PlanningMode;
+  selectedStoreIds: string[];
+  breakEvenInput: string;
+  previousRevenueInput: string;
+  inflationRate: string;
+  marketGrowth: string;
+  desiredGrowth: string;
+  notes: string;
+}
+
+const defaultDraftValues: CalculatorDraft = {
+  planningMode: "balanced",
+  selectedStoreIds: [],
+  breakEvenInput: "",
+  previousRevenueInput: "",
+  inflationRate: "0",
+  marketGrowth: "0",
+  desiredGrowth: "0",
+  notes: "",
+};
+
 interface GoalCalculatorProps {
   onUseSuggested: (storeId: string, storeName: string, value: number) => void;
 }
@@ -69,16 +93,36 @@ interface GoalCalculatorProps {
 const GoalCalculator = ({ onUseSuggested }: GoalCalculatorProps) => {
   const { profile } = useAuth();
 
-  const [planningMode, setPlanningMode] = useState<PlanningMode>("balanced");
-  const [breakEvenInput, setBreakEvenInput] = useState("");
-  const [previousRevenueInput, setPreviousRevenueInput] = useState("");
-  const [inflationRate, setInflationRate] = useState("0");
-  const [marketGrowth, setMarketGrowth] = useState("0");
-  const [desiredGrowth, setDesiredGrowth] = useState("0");
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const draft = useFormDraft<CalculatorDraft>({
+    key: "goal-calculator",
+    initialValues: defaultDraftValues,
+    userId: profile?.id,
+  });
+
+  // Safety: ensure selectedStoreIds is always an array
+  if (!Array.isArray(draft.values.selectedStoreIds)) {
+    draft.setValues(prev => ({ ...prev, selectedStoreIds: [] }));
+  }
+
+  const planningMode = draft.values.planningMode;
+  const setPlanningMode = (v: PlanningMode) => draft.setValues(p => ({ ...p, planningMode: v }));
+  const selectedStoreIds = Array.isArray(draft.values.selectedStoreIds) ? draft.values.selectedStoreIds : [];
+  const setSelectedStoreIds = (fn: (prev: string[]) => string[]) => draft.setValues(p => ({ ...p, selectedStoreIds: fn(Array.isArray(p.selectedStoreIds) ? p.selectedStoreIds : []) }));
+  const breakEvenInput = draft.values.breakEvenInput;
+  const setBreakEvenInput = (v: string) => draft.setValues(p => ({ ...p, breakEvenInput: v }));
+  const previousRevenueInput = draft.values.previousRevenueInput;
+  const setPreviousRevenueInput = (v: string) => draft.setValues(p => ({ ...p, previousRevenueInput: v }));
+  const inflationRate = draft.values.inflationRate;
+  const setInflationRate = (v: string) => draft.setValues(p => ({ ...p, inflationRate: v }));
+  const marketGrowth = draft.values.marketGrowth;
+  const setMarketGrowth = (v: string) => draft.setValues(p => ({ ...p, marketGrowth: v }));
+  const desiredGrowth = draft.values.desiredGrowth;
+  const setDesiredGrowth = (v: string) => draft.setValues(p => ({ ...p, desiredGrowth: v }));
+  const notes = draft.values.notes;
+  const setNotes = (v: string) => draft.setValues(p => ({ ...p, notes: v }));
+
   const [results, setResults] = useState<CalcResult[]>([]);
   const [calculated, setCalculated] = useState(false);
-  const [notes, setNotes] = useState("");
 
   const { data: stores = [] } = useQuery({
     queryKey: ["calc-stores"],
@@ -150,6 +194,17 @@ const GoalCalculator = ({ onUseSuggested }: GoalCalculatorProps) => {
     setCalculated(true);
   };
 
+  const handleUseSuggested = (storeId: string, storeName: string, value: number) => {
+    draft.clearDraft();
+    onUseSuggested(storeId, storeName, value);
+  };
+
+  const clearCalculator = () => {
+    draft.discardDraft();
+    setResults([]);
+    setCalculated(false);
+  };
+
   const canCalculate = breakEvenInput && previousRevenueInput;
 
   const allAlerts = useMemo(() => {
@@ -163,18 +218,23 @@ const GoalCalculator = ({ onUseSuggested }: GoalCalculatorProps) => {
     aggressive: "Agressivo",
   };
 
-  const periodOptions = [
-    { value: "monthly", label: "Mensal" },
-    { value: "quarterly", label: "Trimestral" },
-    { value: "semiannual", label: "Semestral" },
-    { value: "annual", label: "Anual" },
-  ];
-
   return (
     <div className="space-y-6">
+      <UnsavedChangesGuard isDirty={draft.isDirty} />
+
+      {draft.wasRecovered && (
+        <DraftRecoveryBanner
+          onRestore={() => draft.dismissRecovery()}
+          onDiscard={() => draft.discardDraft()}
+        />
+      )}
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Parâmetros do Cálculo</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Parâmetros do Cálculo</CardTitle>
+            <AutosaveIndicator isSaving={draft.isSaving} lastSaved={draft.lastSaved} isDirty={draft.isDirty} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <PlanningModeSelector value={planningMode} onChange={setPlanningMode} />
@@ -235,10 +295,17 @@ const GoalCalculator = ({ onUseSuggested }: GoalCalculatorProps) => {
             <Textarea placeholder="Notas sobre o planejamento..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 
-          <Button onClick={calculate} disabled={!canCalculate} className="w-full sm:w-auto">
-            <Calculator className="h-4 w-4 mr-2" />
-            Calcular Metas
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={calculate} disabled={!canCalculate} className="w-full sm:w-auto">
+              <Calculator className="h-4 w-4 mr-2" />
+              Calcular Metas
+            </Button>
+            {draft.isDirty && (
+              <Button variant="outline" onClick={clearCalculator} className="w-full sm:w-auto">
+                Limpar calculadora
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -300,7 +367,7 @@ const GoalCalculator = ({ onUseSuggested }: GoalCalculatorProps) => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => onUseSuggested(r.storeId, r.storeName, r.suggested)}
+                            onClick={() => handleUseSuggested(r.storeId, r.storeName, r.suggested)}
                           >
                             Usar valor
                           </Button>
