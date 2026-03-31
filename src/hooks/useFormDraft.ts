@@ -143,6 +143,7 @@ export function useFormDraft<T>({
   const clearDraft = useCallback(() => {
     localStorage.removeItem(storageKey);
     setLastSaved(null);
+    console.log("[useFormDraft] draft cleared", storageKey);
   }, [storageKey]);
 
   const discardDraft = useCallback(() => {
@@ -150,6 +151,7 @@ export function useFormDraft<T>({
     setValues(initialRef.current);
     setWasRecovered(false);
     setLastSaved(null);
+    console.log("[useFormDraft] draft discarded", storageKey);
   }, [storageKey]);
 
   const dismissRecovery = useCallback(() => {
