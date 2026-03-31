@@ -80,6 +80,14 @@ export function useFormDraft<T>({
 
   const isDirty = JSON.stringify(values) !== JSON.stringify(initialRef.current);
 
+  // Keep a ref to latest values for unmount save
+  const valuesRef = useRef(values);
+  const isDirtyRef = useRef(isDirty);
+  const storageKeyRef = useRef(storageKey);
+  useEffect(() => { valuesRef.current = values; }, [values]);
+  useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+  useEffect(() => { storageKeyRef.current = storageKey; }, [storageKey]);
+
   // Autosave
   useEffect(() => {
     if (!isDirty) return;
@@ -92,12 +100,28 @@ export function useFormDraft<T>({
           JSON.stringify({ data: values, savedAt: new Date().toISOString() })
         );
         setLastSaved(new Date());
+        console.log("[useFormDraft] draft saved", storageKey);
       } catch {}
       setIsSaving(false);
     }, autosaveInterval);
 
     return () => clearTimeout(timer);
   }, [values, isDirty, storageKey, autosaveInterval]);
+
+  // Save immediately on unmount to prevent data loss (e.g. tab switch)
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current) {
+        try {
+          localStorage.setItem(
+            storageKeyRef.current,
+            JSON.stringify({ data: valuesRef.current, savedAt: new Date().toISOString() })
+          );
+          console.log("[useFormDraft] draft saved on unmount", storageKeyRef.current);
+        } catch {}
+      }
+    };
+  }, []);
 
   // Save immediately on critical changes (beforeunload)
   useEffect(() => {
@@ -119,6 +143,7 @@ export function useFormDraft<T>({
   const clearDraft = useCallback(() => {
     localStorage.removeItem(storageKey);
     setLastSaved(null);
+    console.log("[useFormDraft] draft cleared", storageKey);
   }, [storageKey]);
 
   const discardDraft = useCallback(() => {
@@ -126,6 +151,7 @@ export function useFormDraft<T>({
     setValues(initialRef.current);
     setWasRecovered(false);
     setLastSaved(null);
+    console.log("[useFormDraft] draft discarded", storageKey);
   }, [storageKey]);
 
   const dismissRecovery = useCallback(() => {
