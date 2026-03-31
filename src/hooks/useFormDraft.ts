@@ -36,6 +36,31 @@ function getDraftKey(key: string, userId?: string): string {
   return `vm_draft_${key}${userId ? `_${userId}` : ""}`;
 }
 
+/**
+ * Try to read draft from localStorage, checking both user-scoped and unscoped keys.
+ * This handles the case where userId was undefined when draft was saved.
+ */
+function readDraft<T>(key: string, userId?: string): { data: T; foundKey: string } | null {
+  const userKey = getDraftKey(key, userId);
+  const bareKey = getDraftKey(key);
+
+  // Prefer user-scoped key
+  for (const k of [userKey, bareKey]) {
+    try {
+      const stored = localStorage.getItem(k);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.data && typeof parsed.data === "object") {
+          return { data: parsed.data as T, foundKey: k };
+        }
+      }
+    } catch {
+      try { localStorage.removeItem(k); } catch {}
+    }
+  }
+  return null;
+}
+
 export function useFormDraft<T>({
   key,
   initialValues,
@@ -44,35 +69,28 @@ export function useFormDraft<T>({
 }: UseFormDraftOptions<T>): UseFormDraftReturn<T> {
   const storageKey = getDraftKey(key, userId);
   const initialRef = useRef(initialValues);
-  // Try to load draft on mount
+
+  // Try to load draft on mount (check both keyed and unkeyed)
   const [values, setValues] = useState<T>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed?.data && typeof parsed.data === "object") {
-          // Merge with initial values to ensure all keys exist (handles schema changes)
-          const merged = { ...initialValues, ...parsed.data };
-          return merged as T;
-        }
+    const result = readDraft<T>(key, userId);
+    if (result) {
+      const merged = { ...initialValues, ...result.data };
+      console.log("[useFormDraft] draft loaded from", result.foundKey, merged);
+      // Migrate: if found under bare key but we have userId, move it
+      if (userId && result.foundKey !== storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify({ data: merged, savedAt: new Date().toISOString() }));
+          localStorage.removeItem(result.foundKey);
+          console.log("[useFormDraft] migrated draft from", result.foundKey, "to", storageKey);
+        } catch {}
       }
-    } catch {
-      // Corrupted draft - remove it
-      try { localStorage.removeItem(storageKey); } catch {}
+      return merged as T;
     }
     return initialValues;
   });
 
-  // Detect recovery separately (avoid calling setState inside useState initializer)
   const [wasRecovered, setWasRecovered] = useState(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return !!(parsed?.data && typeof parsed.data === "object");
-      }
-    } catch {}
-    return false;
+    return readDraft<T>(key, userId) !== null;
   });
 
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -80,48 +98,31 @@ export function useFormDraft<T>({
 
   const isDirty = JSON.stringify(values) !== JSON.stringify(initialRef.current);
 
-  // Keep a ref to latest values for unmount save
-  const valuesRef = useRef(values);
-  const isDirtyRef = useRef(isDirty);
-  const storageKeyRef = useRef(storageKey);
-  useEffect(() => { valuesRef.current = values; }, [values]);
-  useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
-  useEffect(() => { storageKeyRef.current = storageKey; }, [storageKey]);
-
-  // Autosave
+  // Single autosave effect: saves on timer AND on cleanup (unmount/tab switch)
   useEffect(() => {
     if (!isDirty) return;
 
-    const timer = setTimeout(() => {
+    const payload = JSON.stringify({ data: values, savedAt: new Date().toISOString() });
+
+    const timer = window.setTimeout(() => {
       setIsSaving(true);
       try {
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({ data: values, savedAt: new Date().toISOString() })
-        );
+        localStorage.setItem(storageKey, payload);
         setLastSaved(new Date());
-        console.log("[useFormDraft] draft saved", storageKey);
+        console.log("[useFormDraft] draft saved (timer)", storageKey);
       } catch {}
       setIsSaving(false);
     }, autosaveInterval);
 
-    return () => clearTimeout(timer);
-  }, [values, isDirty, storageKey, autosaveInterval]);
-
-  // Save immediately on unmount to prevent data loss (e.g. tab switch)
-  useEffect(() => {
     return () => {
-      if (isDirtyRef.current) {
-        try {
-          localStorage.setItem(
-            storageKeyRef.current,
-            JSON.stringify({ data: valuesRef.current, savedAt: new Date().toISOString() })
-          );
-          console.log("[useFormDraft] draft saved on unmount", storageKeyRef.current);
-        } catch {}
-      }
+      clearTimeout(timer);
+      // Save synchronously on cleanup (component unmount, tab switch, values change)
+      try {
+        localStorage.setItem(storageKey, payload);
+        console.log("[useFormDraft] draft saved (cleanup)", storageKey);
+      } catch {}
     };
-  }, []);
+  }, [values, isDirty, storageKey, autosaveInterval]);
 
   // Save immediately on critical changes (beforeunload)
   useEffect(() => {
@@ -142,17 +143,26 @@ export function useFormDraft<T>({
 
   const clearDraft = useCallback(() => {
     localStorage.removeItem(storageKey);
+    // Also clean bare key just in case
+    const bareKey = getDraftKey(key);
+    if (bareKey !== storageKey) {
+      localStorage.removeItem(bareKey);
+    }
     setLastSaved(null);
     console.log("[useFormDraft] draft cleared", storageKey);
-  }, [storageKey]);
+  }, [storageKey, key]);
 
   const discardDraft = useCallback(() => {
     localStorage.removeItem(storageKey);
+    const bareKey = getDraftKey(key);
+    if (bareKey !== storageKey) {
+      localStorage.removeItem(bareKey);
+    }
     setValues(initialRef.current);
     setWasRecovered(false);
     setLastSaved(null);
     console.log("[useFormDraft] draft discarded", storageKey);
-  }, [storageKey]);
+  }, [storageKey, key]);
 
   const dismissRecovery = useCallback(() => {
     setWasRecovered(false);
